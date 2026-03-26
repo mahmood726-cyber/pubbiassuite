@@ -350,6 +350,9 @@ td { background: var(--bg2); }
     <div class="export-buttons">
       <button id="btnExportCSV" class="btn-secondary">Export CSV</button>
       <button id="btnExportJSON" class="btn-secondary">Export JSON</button>
+      <button id="btnExportMAIF" class="btn-secondary" style="background:#2563eb;color:#fff;">Export MAIF</button>
+      <button id="btnImportMAIF" class="btn-secondary" style="background:#16a34a;color:#fff;">Import MAIF</button>
+      <input type="file" id="maifFileInput" accept=".json" style="display:none;">
     </div>
   </div>
 </div>
@@ -2021,6 +2024,79 @@ function exportJSON() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   MAIF (Meta-Analysis Interchange Format) IMPORT / EXPORT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function exportMAIF() {
+  var studies = STATE.studies.map(function(s, i) {
+    return { id: s.name, yi: s.y, sei: s.se };
+  });
+  var maif = {
+    version: '1.0',
+    metadata: {
+      effectType: STATE.effectType,
+      createdBy: 'PubBiasSuite',
+      createdAt: new Date().toISOString()
+    },
+    studies: studies
+  };
+  if (STATE.results) {
+    var r = STATE.results;
+    maif.results = {
+      pubBias: {
+        eggerP: r.egger ? r.egger.p : null,
+        beggP: r.begg ? r.begg.p : null,
+        trimFillK0: r.trimfillR0 ? r.trimfillR0.k0 : null,
+        trimFillAdjMu: r.trimfillR0 ? r.trimfillR0.adjMuRE : null,
+        petEstimate: r.pet ? r.pet.adjEstimate : null,
+        peeseEstimate: r.peese ? r.peese.adjEstimate : null,
+        petPeeseEstimate: r.petpeese ? r.petpeese.adjEstimate : null,
+        petPeeseMethod: r.petpeese ? r.petpeese.method : null,
+        threepsmDelta: r.threepsm ? r.threepsm.delta : null,
+        waapwlsEstimate: r.waapwls ? r.waapwls.adjEstimate : null,
+        limitEstimate: r.limit ? r.limit.adjEstimate : null
+      }
+    };
+  }
+  var blob = new Blob([JSON.stringify(maif, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'pubbias-maif.json';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importMAIF(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var maif = JSON.parse(e.target.result);
+      if (!maif.version || !maif.studies || !Array.isArray(maif.studies)) {
+        alert('Invalid MAIF file: missing version or studies array.');
+        return;
+      }
+      STATE.studies = maif.studies.map(function(s) {
+        return {
+          name: s.id || ('Study ' + (STATE.studies.length + 1)),
+          y: Number(s.yi) || 0,
+          se: Number(s.sei) || 0.1
+        };
+      });
+      if (maif.metadata && maif.metadata.effectType) {
+        STATE.effectType = maif.metadata.effectType;
+        document.getElementById('effectType').value = STATE.effectType;
+      }
+      renderDataTable();
+      alert('Imported ' + maif.studies.length + ' studies from MAIF.');
+    } catch (err) {
+      alert('Failed to parse MAIF file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    EVENT WIRING
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -2153,6 +2229,13 @@ function init() {
   // Export buttons
   document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
   document.getElementById('btnExportJSON').addEventListener('click', exportJSON);
+  document.getElementById('btnExportMAIF').addEventListener('click', exportMAIF);
+  document.getElementById('btnImportMAIF').addEventListener('click', function() {
+    document.getElementById('maifFileInput').click();
+  });
+  document.getElementById('maifFileInput').addEventListener('change', function() {
+    if (this.files && this.files[0]) { importMAIF(this.files[0]); this.value = ''; }
+  });
 
   // Load saved state
   loadState();
