@@ -374,6 +374,14 @@ function escapeHtml(s) {
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+function csvSafe(s) {
+  if (s == null) return '';
+  s = String(s);
+  if (/^[=+@\t\r]/.test(s)) s = "'" + s;
+  if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
 /** Standard normal CDF (Abramowitz & Stegun approximation, max error ~1.5e-7) */
 function normalCDF(x) {
   if (x === Infinity) return 1;
@@ -874,9 +882,19 @@ function runEgger(y, se, w) {
   };
 }
 
-/* ── 2. Begg's rank correlation ── */
+/* ── 2. Begg's rank correlation (standardized residuals vs variance) ── */
 function runBegg(y, v) {
-  return kendallTau(y, v);
+  // Proper Begg-Mazumdar: correlate standardized residuals with variances
+  var k = y.length;
+  if (k < 3) return { tau: 0, z: 0, p: 1, n: k };
+  // Compute FE pooled estimate
+  var sumW = 0, sumWY = 0;
+  for (var i = 0; i < k; i++) { var w = v[i] > 0 ? 1/v[i] : 0; sumW += w; sumWY += w * y[i]; }
+  var thetaFE = sumW > 0 ? sumWY / sumW : 0;
+  // Standardized residuals
+  var resid = [];
+  for (var i = 0; i < k; i++) resid[i] = (y[i] - thetaFE) / Math.sqrt(v[i]);
+  return kendallTau(resid, v);
 }
 
 /* ── 3 & 4. Trim-and-fill ── */
@@ -975,11 +993,11 @@ function runTrimFill(y, se, estimator) {
     var n_total = sorted_y.length;
     var newK0;
     if (estimator === 'L0') {
-      // L0: k0 = (4*S - n*(n+1)) / (2*n - 1)  where n = total studies
-      newK0 = Math.max(0, Math.round((4 * S - n_total * (n_total + 1)) / (2 * n_total - 1)));
+      // L0 (Duval & Tweedie 2000): k0 = (4*S - n) / (2*n - 1)
+      newK0 = Math.max(0, Math.round((4 * S - n_total) / (2 * n_total - 1)));
     } else {
-      // R0: k0 = (4*S - n*(n+1)) / (2*n + 3) — more conservative (note: different formula variant)
-      newK0 = Math.max(0, Math.round((4 * S - n_total * (n_total + 1)) / (2 * n_total + 3)));
+      // R0: k0 = (4*S - n) / (2*n + 3) — more conservative
+      newK0 = Math.max(0, Math.round((4 * S - n_total) / (2 * n_total + 3)));
     }
 
     if (newK0 === k0) break;
