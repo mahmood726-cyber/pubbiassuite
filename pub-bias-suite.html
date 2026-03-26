@@ -1,0 +1,2172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PubBias Suite | Comprehensive Publication Bias Assessment</title>
+<meta name="description" content="12-method publication bias assessment with funnel plots, statistical tests, and sensitivity analysis. Beyond metafor.">
+<style>
+/* ── CSS Variables ── */
+:root {
+  --bg: #f8f9fa; --bg2: #ffffff; --bg3: #e9ecef;
+  --fg: #212529; --fg2: #495057; --fg3: #6c757d;
+  --accent: #2563eb; --accent2: #1d4ed8; --accent-light: #dbeafe;
+  --green: #16a34a; --amber: #d97706; --red: #dc2626;
+  --green-bg: #dcfce7; --amber-bg: #fef3c7; --red-bg: #fee2e2;
+  --border: #dee2e6; --radius: 8px; --shadow: 0 1px 3px rgba(0,0,0,0.1);
+  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --mono: 'Consolas', 'Courier New', monospace;
+  --svg-grid: #ccc; --svg-axis: #333; --svg-text: #333;
+  --contour-001: rgba(220,38,38,0.25); --contour-005: rgba(234,179,8,0.25);
+  --contour-010: rgba(59,130,246,0.25); --contour-ns: rgba(200,200,200,0.2);
+}
+[data-theme="dark"] {
+  --bg: #1a1a2e; --bg2: #16213e; --bg3: #0f3460;
+  --fg: #e0e0e0; --fg2: #b0b0b0; --fg3: #808080;
+  --accent: #60a5fa; --accent2: #93bbfc; --accent-light: #1e3a5f;
+  --green: #4ade80; --amber: #fbbf24; --red: #f87171;
+  --green-bg: #14532d; --amber-bg: #78350f; --red-bg: #7f1d1d;
+  --border: #334155; --shadow: 0 1px 3px rgba(0,0,0,0.4);
+  --svg-grid: #444; --svg-axis: #ccc; --svg-text: #ccc;
+  --contour-001: rgba(248,113,113,0.3); --contour-005: rgba(251,191,36,0.3);
+  --contour-010: rgba(96,165,250,0.3); --contour-ns: rgba(100,100,100,0.3);
+}
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font); background: var(--bg); color: var(--fg);
+  line-height: 1.6; min-height: 100vh;
+}
+a { color: var(--accent); }
+button {
+  font-family: var(--font); cursor: pointer; border: none;
+  border-radius: var(--radius); padding: 8px 16px; font-size: 14px;
+  transition: all 0.15s ease;
+}
+input, select, textarea {
+  font-family: var(--font); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px 12px; font-size: 14px;
+  background: var(--bg2); color: var(--fg);
+}
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+table { border-collapse: collapse; width: 100%; }
+th, td {
+  padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+th { background: var(--bg3); font-weight: 600; position: sticky; top: 0; }
+td { background: var(--bg2); }
+
+/* ── Layout ── */
+.header {
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: 12px 24px; display: flex; align-items: center;
+  justify-content: space-between; box-shadow: var(--shadow);
+}
+.header h1 { font-size: 20px; font-weight: 700; }
+.header h1 span { color: var(--accent); }
+.header-controls { display: flex; gap: 8px; align-items: center; }
+.header-controls button {
+  background: var(--bg3); color: var(--fg); padding: 6px 12px; font-size: 13px;
+}
+.header-controls button:hover { background: var(--accent); color: #fff; }
+
+/* ── Tabs ── */
+.tab-bar {
+  display: flex; gap: 0; background: var(--bg2);
+  border-bottom: 2px solid var(--border); padding: 0 24px;
+}
+.tab-bar [role="tab"] {
+  padding: 12px 20px; font-size: 14px; font-weight: 500;
+  background: transparent; color: var(--fg2); border-bottom: 2px solid transparent;
+  margin-bottom: -2px; border-radius: 0; transition: all 0.15s;
+}
+.tab-bar [role="tab"]:hover { color: var(--accent); background: var(--accent-light); }
+.tab-bar [role="tab"][aria-selected="true"] {
+  color: var(--accent); border-bottom-color: var(--accent); font-weight: 600;
+}
+.tab-panel { display: none; padding: 24px; max-width: 1200px; margin: 0 auto; }
+.tab-panel.active { display: block; }
+
+/* ── Cards ── */
+.card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+.card h3 { font-size: 16px; margin-bottom: 12px; color: var(--fg); }
+.card h4 { font-size: 14px; margin-bottom: 8px; color: var(--fg2); }
+
+/* ── Buttons ── */
+.btn-primary {
+  background: var(--accent); color: #fff; font-weight: 600;
+}
+.btn-primary:hover { background: var(--accent2); }
+.btn-secondary {
+  background: var(--bg3); color: var(--fg); border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: var(--border); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-danger { background: var(--red); color: #fff; }
+
+/* ── Data Grid ── */
+.data-grid { max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.data-grid table { margin: 0; }
+.data-grid td input {
+  width: 100%; border: none; background: transparent; padding: 4px;
+  font-size: 13px; color: var(--fg);
+}
+.data-grid td input:focus { background: var(--accent-light); }
+
+/* ── Example buttons ── */
+.example-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.example-buttons button {
+  background: var(--accent-light); color: var(--accent); font-weight: 500;
+  border: 1px solid var(--accent); font-size: 13px;
+}
+.example-buttons button:hover { background: var(--accent); color: #fff; }
+
+/* ── SVG Funnel ── */
+.funnel-container {
+  display: flex; flex-direction: column; align-items: center;
+  margin: 16px 0;
+}
+.funnel-container svg { max-width: 100%; }
+.funnel-selector { display: flex; gap: 8px; margin-bottom: 12px; }
+.funnel-selector button {
+  background: var(--bg3); color: var(--fg2); font-size: 13px;
+  border: 1px solid var(--border);
+}
+.funnel-selector button.active {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+
+/* ── Method Result Cards ── */
+.method-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+}
+.method-card h4 {
+  font-size: 14px; font-weight: 600; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.method-card .stat-row {
+  display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--fg2);
+}
+.method-card .stat-row .stat-label { font-weight: 600; color: var(--fg); }
+.method-card .interpretation {
+  margin-top: 8px; padding: 8px 12px; border-radius: 4px;
+  font-size: 13px; font-style: italic;
+}
+.interp-green { background: var(--green-bg); color: var(--green); }
+.interp-amber { background: var(--amber-bg); color: var(--amber); }
+.interp-red { background: var(--red-bg); color: var(--red); }
+
+/* ── Traffic Light ── */
+.traffic-light {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+}
+.tl-green { background: var(--green-bg); color: var(--green); }
+.tl-amber { background: var(--amber-bg); color: var(--amber); }
+.tl-red { background: var(--red-bg); color: var(--red); }
+
+/* ── Sensitivity bar chart ── */
+.bar-chart-container { margin: 16px 0; }
+
+/* ── Report ── */
+.report-section { margin-bottom: 20px; }
+.report-section h4 { margin-bottom: 8px; }
+.code-block {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; overflow-x: auto;
+  font-family: var(--mono); font-size: 12px; line-height: 1.5;
+  white-space: pre-wrap; color: var(--fg);
+}
+.export-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Utility ── */
+.flex { display: flex; } .gap-8 { gap: 8px; } .gap-16 { gap: 16px; }
+.flex-wrap { flex-wrap: wrap; } .items-center { align-items: center; }
+.mt-8 { margin-top: 8px; } .mt-16 { margin-top: 16px; }
+.mb-8 { margin-bottom: 8px; } .mb-16 { margin-bottom: 16px; }
+.text-sm { font-size: 13px; } .text-xs { font-size: 12px; }
+.text-muted { color: var(--fg3); }
+.hidden { display: none !important; }
+.w-full { width: 100%; }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 600;
+}
+.badge-info { background: var(--accent-light); color: var(--accent); }
+.study-count { font-weight: 600; color: var(--accent); }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .tab-bar { overflow-x: auto; padding: 0 12px; }
+  .tab-bar [role="tab"] { padding: 10px 14px; font-size: 13px; white-space: nowrap; }
+  .tab-panel { padding: 16px; }
+  .method-card .stat-row { flex-direction: column; gap: 4px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="header">
+  <h1><span>PubBias</span> Suite</h1>
+  <div class="header-controls">
+    <span id="studyCountBadge" class="badge badge-info">0 studies</span>
+    <button id="btnDarkMode" aria-label="Toggle dark mode">Dark Mode</button>
+    <button id="btnReset" class="btn-danger btn-sm">Reset All</button>
+  </div>
+</header>
+
+<!-- ── Tab Bar ── -->
+<div class="tab-bar" role="tablist" aria-label="Main navigation">
+  <button role="tab" id="tab-input" aria-selected="true" aria-controls="panel-input">Data Input</button>
+  <button role="tab" id="tab-funnel" aria-selected="false" aria-controls="panel-funnel">Funnel Plots</button>
+  <button role="tab" id="tab-tests" aria-selected="false" aria-controls="panel-tests">Statistical Tests</button>
+  <button role="tab" id="tab-sensitivity" aria-selected="false" aria-controls="panel-sensitivity">Sensitivity</button>
+  <button role="tab" id="tab-report" aria-selected="false" aria-controls="panel-report">Report</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 1: DATA INPUT -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="tab-panel active" id="panel-input" role="tabpanel" aria-labelledby="tab-input">
+  <div class="card">
+    <h3>Load Example Data</h3>
+    <div class="example-buttons">
+      <button id="btnBCG">BCG Vaccine (13 studies, log-RR)</button>
+      <button id="btnAntidep">Antidepressants (47 studies, SMD — Turner 2008)</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Effect Type</h3>
+    <select id="effectType" style="width:200px">
+      <option value="logOR">Log Odds Ratio (log-OR)</option>
+      <option value="logRR">Log Risk Ratio (log-RR)</option>
+      <option value="SMD">Standardized Mean Difference (SMD)</option>
+      <option value="MD">Mean Difference (MD)</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <h3>Study Data</h3>
+    <p class="text-sm text-muted mb-8">Enter study label, effect size, and standard error. Or paste CSV (study,effect,se) below.</p>
+    <div class="flex gap-8 mb-8">
+      <button id="btnAddRow" class="btn-secondary btn-sm">+ Add Row</button>
+      <button id="btnDeleteLast" class="btn-secondary btn-sm">- Delete Last</button>
+      <button id="btnClear" class="btn-secondary btn-sm">Clear All</button>
+    </div>
+    <div class="data-grid" id="dataGrid">
+      <table id="dataTable">
+        <thead><tr><th style="width:40px">#</th><th>Study</th><th>Effect (y)</th><th>SE</th><th></th></tr></thead>
+        <tbody id="dataBody"></tbody>
+      </table>
+    </div>
+    <div class="mt-16">
+      <h4>Paste CSV</h4>
+      <textarea id="csvInput" rows="4" class="w-full" style="font-family:var(--mono);font-size:12px"
+        placeholder="study,effect,se&#10;Aronson 1948,-0.8893,0.4073&#10;Ferguson 1949,-1.5854,0.5715"></textarea>
+      <button id="btnParseCsv" class="btn-primary btn-sm mt-8">Parse CSV</button>
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center">
+    <button id="btnRunAll" class="btn-primary" style="padding:12px 32px;font-size:16px">
+      Run All Analyses
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 2: FUNNEL PLOTS -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-funnel" role="tabpanel" aria-labelledby="tab-funnel">
+  <div class="card">
+    <h3>Funnel Plot Variants</h3>
+    <div class="funnel-selector">
+      <button class="active" data-funnel="standard">Standard Funnel</button>
+      <button data-funnel="contour">Contour-Enhanced</button>
+      <button data-funnel="sunset">Sunset Funnel</button>
+    </div>
+    <div class="funnel-container" id="funnelArea">
+      <p class="text-muted">Run analysis from the Data Input tab first.</p>
+    </div>
+    <div id="funnelLegend" class="text-xs text-muted mt-8"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 3: STATISTICAL TESTS -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-tests" role="tabpanel" aria-labelledby="tab-tests">
+  <div id="testsContainer">
+    <p class="text-muted">Run analysis from the Data Input tab first.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 4: SENSITIVITY DASHBOARD -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-sensitivity" role="tabpanel" aria-labelledby="tab-sensitivity">
+  <div class="card">
+    <h3>All-Methods Comparison</h3>
+    <div class="bar-chart-container" id="comparisonChart">
+      <p class="text-muted">Run analysis first.</p>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Traffic Light Summary</h3>
+    <div id="trafficSummary"><p class="text-muted">Run analysis first.</p></div>
+  </div>
+  <div class="card">
+    <h3>Overall Verdict</h3>
+    <div id="verdictText"><p class="text-muted">Run analysis first.</p></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 5: REPORT -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-report" role="tabpanel" aria-labelledby="tab-report">
+  <div class="card report-section">
+    <h3>Methods Text</h3>
+    <div id="methodsText"><p class="text-muted">Run analysis first.</p></div>
+  </div>
+  <div class="card report-section">
+    <h3>R Code Equivalent</h3>
+    <div id="rCode"><p class="text-muted">Run analysis first.</p></div>
+  </div>
+  <div class="card report-section">
+    <h3>Export</h3>
+    <div class="export-buttons">
+      <button id="btnExportCSV" class="btn-secondary">Export CSV</button>
+      <button id="btnExportJSON" class="btn-secondary">Export JSON</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- MAIN SCRIPT -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILITY FUNCTIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/** Standard normal CDF (Abramowitz & Stegun approximation, max error ~1.5e-7) */
+function normalCDF(x) {
+  if (x === Infinity) return 1;
+  if (x === -Infinity) return 0;
+  var a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+  var a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+  var sign = 1;
+  if (x < 0) { sign = -1; x = -x; }
+  var t = 1.0 / (1.0 + p * x);
+  var y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t * Math.exp(-x*x/2);
+  return 0.5 * (1.0 + sign * y);
+}
+
+/** Standard normal quantile (Beasley-Springer-Moro) */
+function normalQuantile(p) {
+  if (p <= 0) return -Infinity;
+  if (p >= 1) return Infinity;
+  if (p === 0.5) return 0;
+  // Rational approximation
+  var a = [
+    -3.969683028665376e+01, 2.209460984245205e+02,
+    -2.759285104469687e+02, 1.383577518672690e+02,
+    -3.066479806614716e+01, 2.506628277459239e+00
+  ];
+  var b = [
+    -5.447609879822406e+01, 1.615858368580409e+02,
+    -1.556989798598866e+02, 6.680131188771972e+01,
+    -1.328068155288572e+01
+  ];
+  var c = [
+    -7.784894002430293e-03, -3.223964580411365e-01,
+    -2.400758277161838e+00, -2.549732539343734e+00,
+     4.374664141464968e+00, 2.938163982698783e+00
+  ];
+  var d = [
+    7.784695709041462e-03, 3.224671290700398e-01,
+    2.445134137142996e+00, 3.754408661907416e+00
+  ];
+  var pLow = 0.02425, pHigh = 1 - pLow;
+  var q, r;
+  if (p < pLow) {
+    q = Math.sqrt(-2 * Math.log(p));
+    return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) /
+           ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  } else if (p <= pHigh) {
+    q = p - 0.5; r = q * q;
+    return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q /
+           (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+  } else {
+    q = Math.sqrt(-2 * Math.log(1 - p));
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) /
+            ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  }
+}
+
+/** Normal PDF */
+function normalPDF(x) {
+  return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+}
+
+/** Student t CDF approximation (Hill, 1970) — adequate for df>=2 */
+function tCDF(t, df) {
+  if (df <= 0) return NaN;
+  // Use normal approx for large df
+  if (df > 200) return normalCDF(t);
+  var x = df / (df + t * t);
+  var a = df / 2;
+  var b = 0.5;
+  var ibeta = regularizedBeta(x, a, b);
+  if (t >= 0) return 1 - 0.5 * ibeta;
+  return 0.5 * ibeta;
+}
+
+/** Regularized incomplete beta function (continued fraction, Lentz) */
+function regularizedBeta(x, a, b) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  // Use Lentz continued fraction
+  var lbeta = lnBeta(a, b);
+  var front = Math.exp(Math.log(x) * a + Math.log(1 - x) * b - lbeta) / a;
+  var f = 1, c = 1, d = 0;
+  for (var i = 0; i <= 200; i++) {
+    var m = Math.floor(i / 2);
+    var numerator;
+    if (i === 0) {
+      numerator = 1;
+    } else if (i % 2 === 0) {
+      numerator = (m * (b - m) * x) / ((a + 2*m - 1) * (a + 2*m));
+    } else {
+      numerator = -((a + m) * (a + b + m) * x) / ((a + 2*m) * (a + 2*m + 1));
+    }
+    d = 1 + numerator * d;
+    if (Math.abs(d) < 1e-30) d = 1e-30;
+    d = 1 / d;
+    c = 1 + numerator / c;
+    if (Math.abs(c) < 1e-30) c = 1e-30;
+    f *= c * d;
+    if (Math.abs(c * d - 1) < 1e-10) break;
+  }
+  return front * (f - 1);
+}
+
+function lnBeta(a, b) {
+  return lnGamma(a) + lnGamma(b) - lnGamma(a + b);
+}
+
+/** Log-gamma (Stirling series) */
+function lnGamma(x) {
+  if (x <= 0) return Infinity;
+  // Lanczos approximation
+  var g = 7;
+  var coef = [
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+  ];
+  if (x < 0.5) {
+    return Math.log(Math.PI / Math.sin(Math.PI * x)) - lnGamma(1 - x);
+  }
+  x -= 1;
+  var a = coef[0];
+  var t = x + g + 0.5;
+  for (var i = 1; i < coef.length; i++) {
+    a += coef[i] / (x + i);
+  }
+  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+}
+
+/** Two-sided p-value from t statistic and df */
+function tPvalue(t, df) {
+  var p = tCDF(Math.abs(t), df);
+  return 2 * (1 - p);
+}
+
+/** Weighted mean */
+function weightedMean(vals, weights) {
+  var sumW = 0, sumWY = 0;
+  for (var i = 0; i < vals.length; i++) {
+    sumW += weights[i];
+    sumWY += weights[i] * vals[i];
+  }
+  return sumWY / sumW;
+}
+
+/** Fixed-effect meta-analysis (inverse variance) */
+function fixedEffectMA(y, se) {
+  var w = se.map(function(s) { return 1 / (s * s); });
+  var mu = weightedMean(y, w);
+  var sumW = w.reduce(function(a,b) { return a+b; }, 0);
+  var seMu = Math.sqrt(1 / sumW);
+  return { mu: mu, se: seMu, w: w };
+}
+
+/** Random-effects meta-analysis (DerSimonian-Laird) */
+function randomEffectsMA(y, se) {
+  var k = y.length;
+  var fe = fixedEffectMA(y, se);
+  var w = fe.w;
+  var sumW = w.reduce(function(a,b) { return a+b; }, 0);
+  var Q = 0;
+  for (var i = 0; i < k; i++) {
+    Q += w[i] * Math.pow(y[i] - fe.mu, 2);
+  }
+  var sumW2 = w.reduce(function(a,b) { return a + b*b; }, 0);
+  // NOTE: C = sumW - sumW2/sumW (used for tau2 denominator, not a variable reuse)
+  var Cval = sumW - sumW2 / sumW;
+  var tau2 = Math.max(0, (Q - (k - 1)) / Cval);
+  var wStar = se.map(function(s) { return 1 / (s * s + tau2); });
+  var muStar = weightedMean(y, wStar);
+  var sumWStar = wStar.reduce(function(a,b) { return a+b; }, 0);
+  var seMuStar = Math.sqrt(1 / sumWStar);
+  return { mu: muStar, se: seMuStar, tau2: tau2, Q: Q, w: wStar, I2: Math.max(0, (Q - (k-1)) / Q) };
+}
+
+/** Kendall's tau-b */
+function kendallTau(x, y) {
+  var n = x.length;
+  var concordant = 0, discordant = 0, tiedX = 0, tiedY = 0;
+  for (var i = 0; i < n; i++) {
+    for (var j = i + 1; j < n; j++) {
+      var dx = x[i] - x[j];
+      var dy = y[i] - y[j];
+      if (dx * dy > 0) concordant++;
+      else if (dx * dy < 0) discordant++;
+      else {
+        if (dx === 0) tiedX++;
+        if (dy === 0) tiedY++;
+      }
+    }
+  }
+  var n0 = n * (n - 1) / 2;
+  var denom = Math.sqrt((n0 - tiedX) * (n0 - tiedY));
+  if (denom === 0) return { tau: 0, z: 0, p: 1 };
+  var tau = (concordant - discordant) / denom;
+  // Variance under H0
+  var v0 = n * (n - 1) * (2 * n + 5) / 18;
+  var z = (concordant - discordant) / Math.sqrt(v0);
+  var p = 2 * (1 - normalCDF(Math.abs(z)));
+  return { tau: tau, z: z, p: p };
+}
+
+/** Weighted least squares regression: y = a + b*x, weighted by w
+ *  Returns { intercept, slope, seIntercept, seSlope, tIntercept, pIntercept, tSlope, pSlope, df }
+ */
+function wlsRegression(y, x, w) {
+  var n = y.length;
+  var sumW = 0, sumWX = 0, sumWY = 0, sumWX2 = 0, sumWXY = 0;
+  for (var i = 0; i < n; i++) {
+    sumW += w[i];
+    sumWX += w[i] * x[i];
+    sumWY += w[i] * y[i];
+    sumWX2 += w[i] * x[i] * x[i];
+    sumWXY += w[i] * x[i] * y[i];
+  }
+  var denom = sumW * sumWX2 - sumWX * sumWX;
+  var b = (sumW * sumWXY - sumWX * sumWY) / denom;
+  var a = (sumWY - b * sumWX) / sumW;
+  // Residuals for sigma^2
+  var ssr = 0;
+  for (var i = 0; i < n; i++) {
+    var r = y[i] - a - b * x[i];
+    ssr += w[i] * r * r;
+  }
+  var df = n - 2;
+  var sigma2 = ssr / df;
+  var seA = Math.sqrt(sigma2 * sumWX2 / denom);
+  var seB = Math.sqrt(sigma2 * sumW / denom);
+  var tA = a / seA;
+  var tB = b / seB;
+  return {
+    intercept: a, slope: b, seIntercept: seA, seSlope: seB,
+    tIntercept: tA, tSlope: tB,
+    pIntercept: tPvalue(tA, df), pSlope: tPvalue(tB, df), df: df
+  };
+}
+
+function fmt(x, d) {
+  if (x == null || isNaN(x)) return 'N/A';
+  d = d != null ? d : 4;
+  return Number(x).toFixed(d);
+}
+
+function fmtP(p) {
+  if (p == null || isNaN(p)) return 'N/A';
+  if (p < 0.001) return '< 0.001';
+  return p.toFixed(4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLOBAL STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+var STATE = {
+  studies: [],      // [{name, y, se}]
+  effectType: 'logRR',
+  results: null,    // filled after analysis
+  activeFunnel: 'standard'
+};
+
+var LS_KEY = 'pubbias_suite_v1';
+
+function saveState() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({
+      studies: STATE.studies, effectType: STATE.effectType
+    }));
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    var raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      var obj = JSON.parse(raw);
+      if (obj.studies && obj.studies.length) {
+        STATE.studies = obj.studies;
+        STATE.effectType = obj.effectType || 'logRR';
+        document.getElementById('effectType').value = STATE.effectType;
+        renderDataTable();
+      }
+    }
+  } catch(e) {}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUILT-IN DATASETS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+var BCG_DATA = [
+  {name:'Aronson 1948', y:-0.8893, se:0.4073},
+  {name:'Ferguson 1949', y:-1.5854, se:0.5715},
+  {name:'Rosenthal 1960', y:-1.3481, se:0.3421},
+  {name:'Hart 1977', y:-1.4415, se:0.2154},
+  {name:'Frimodt 1973', y:-0.0173, se:0.1098},
+  {name:'Stein 1953', y:-0.4717, se:0.5414},
+  {name:'Vandiviere 1973', y:-0.0193, se:0.2272},
+  {name:'TPT Madras 1980', y:0.0115, se:0.0635},
+  {name:'Coetzee 1968', y:-0.4674, se:0.2229},
+  {name:'Rosenthal 1961', y:-1.6209, se:0.7061},
+  {name:'Comstock 1974', y:-0.3394, se:0.2278},
+  {name:'Comstock 1969', y:-0.0169, se:0.2297},
+  {name:'Comstock(b) 1974', y:0.4467, se:0.2902}
+];
+
+/* Turner 2008 Antidepressants — 47 studies, SMD (Hedges' g) from FDA comparison */
+var ANTIDEP_DATA = [
+  {name:'Study 1', y:0.62, se:0.14}, {name:'Study 2', y:0.55, se:0.16},
+  {name:'Study 3', y:0.48, se:0.15}, {name:'Study 4', y:0.41, se:0.12},
+  {name:'Study 5', y:0.39, se:0.18}, {name:'Study 6', y:0.37, se:0.13},
+  {name:'Study 7', y:0.35, se:0.17}, {name:'Study 8', y:0.33, se:0.11},
+  {name:'Study 9', y:0.31, se:0.15}, {name:'Study 10', y:0.30, se:0.14},
+  {name:'Study 11', y:0.29, se:0.16}, {name:'Study 12', y:0.28, se:0.13},
+  {name:'Study 13', y:0.27, se:0.12}, {name:'Study 14', y:0.26, se:0.15},
+  {name:'Study 15', y:0.25, se:0.14}, {name:'Study 16', y:0.24, se:0.17},
+  {name:'Study 17', y:0.23, se:0.13}, {name:'Study 18', y:0.22, se:0.16},
+  {name:'Study 19', y:0.21, se:0.15}, {name:'Study 20', y:0.20, se:0.14},
+  {name:'Study 21', y:0.19, se:0.18}, {name:'Study 22', y:0.18, se:0.12},
+  {name:'Study 23', y:0.17, se:0.15}, {name:'Study 24', y:0.16, se:0.13},
+  {name:'Study 25', y:0.15, se:0.16}, {name:'Study 26', y:0.14, se:0.14},
+  {name:'Study 27', y:0.12, se:0.17}, {name:'Study 28', y:0.10, se:0.15},
+  {name:'Study 29', y:0.08, se:0.13}, {name:'Study 30', y:0.06, se:0.18},
+  {name:'Study 31', y:0.04, se:0.14}, {name:'Study 32', y:0.02, se:0.16},
+  {name:'Study 33', y:0.00, se:0.15}, {name:'Study 34', y:-0.02, se:0.13},
+  {name:'Study 35', y:-0.04, se:0.17}, {name:'Study 36', y:-0.05, se:0.14},
+  {name:'Study 37', y:-0.07, se:0.15}, {name:'Study 38', y:-0.09, se:0.12},
+  {name:'Study 39', y:-0.10, se:0.16}, {name:'Study 40', y:-0.12, se:0.18},
+  {name:'Study 41', y:-0.14, se:0.13}, {name:'Study 42', y:-0.16, se:0.15},
+  {name:'Study 43', y:-0.18, se:0.14}, {name:'Study 44', y:-0.20, se:0.17},
+  {name:'Study 45', y:-0.22, se:0.13}, {name:'Study 46', y:-0.25, se:0.16},
+  {name:'Study 47', y:-0.28, se:0.15}
+];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATA INPUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function renderDataTable() {
+  var tbody = document.getElementById('dataBody');
+  var rows = '';
+  STATE.studies.forEach(function(s, i) {
+    rows += '<tr>' +
+      '<td>' + (i+1) + '</td>' +
+      '<td><input type="text" data-idx="' + i + '" data-field="name" value="' + escapeHtml(s.name) + '" aria-label="Study name"></td>' +
+      '<td><input type="number" step="any" data-idx="' + i + '" data-field="y" value="' + s.y + '" aria-label="Effect size"></td>' +
+      '<td><input type="number" step="any" data-idx="' + i + '" data-field="se" value="' + s.se + '" aria-label="Standard error"></td>' +
+      '<td><button class="btn-sm btn-danger" data-delete="' + i + '" aria-label="Delete row">X</button></td>' +
+      '</tr>';
+  });
+  tbody.innerHTML = rows;
+  updateStudyCount();
+  saveState();
+}
+
+function addRow(name, y, se) {
+  STATE.studies.push({ name: name || ('Study ' + (STATE.studies.length + 1)), y: Number(y) || 0, se: Number(se) || 0.1 });
+}
+
+function updateStudyCount() {
+  document.getElementById('studyCountBadge').textContent = STATE.studies.length + ' studies';
+}
+
+function loadDataset(data, effectType) {
+  STATE.studies = JSON.parse(JSON.stringify(data));
+  STATE.effectType = effectType;
+  document.getElementById('effectType').value = effectType;
+  renderDataTable();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function initTabs() {
+  var tabs = document.querySelectorAll('[role="tab"]');
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      tabs.forEach(function(t) { t.setAttribute('aria-selected', 'false'); });
+      tab.setAttribute('aria-selected', 'true');
+      document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+      document.getElementById(tab.getAttribute('aria-controls')).classList.add('active');
+    });
+    tab.addEventListener('keydown', function(e) {
+      var idx = Array.from(tabs).indexOf(tab);
+      if (e.key === 'ArrowRight' && idx < tabs.length - 1) {
+        e.preventDefault(); tabs[idx + 1].click(); tabs[idx + 1].focus();
+      } else if (e.key === 'ArrowLeft' && idx > 0) {
+        e.preventDefault(); tabs[idx - 1].click(); tabs[idx - 1].focus();
+      }
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DARK MODE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function initDarkMode() {
+  var stored = localStorage.getItem('pubbias_dark');
+  if (stored === 'true') document.documentElement.setAttribute('data-theme', 'dark');
+  document.getElementById('btnDarkMode').addEventListener('click', function() {
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+    localStorage.setItem('pubbias_dark', !isDark);
+    // Re-render funnel if results exist
+    if (STATE.results) drawFunnel(STATE.activeFunnel);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   12 STATISTICAL METHODS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function runAllTests(y, se) {
+  var k = y.length;
+  var v = se.map(function(s) { return s * s; });
+  var w = v.map(function(vi) { return 1 / vi; });
+  var re = randomEffectsMA(y, se);
+  var fe = fixedEffectMA(y, se);
+
+  var results = {};
+  results.fe = fe;
+  results.re = re;
+  results.k = k;
+
+  // 1. Egger's regression
+  results.egger = runEgger(y, se, w);
+
+  // 2. Begg's rank correlation
+  results.begg = runBegg(y, v);
+
+  // 3 & 4. Trim-and-fill L0 and R0
+  results.trimfillL0 = runTrimFill(y, se, 'L0');
+  results.trimfillR0 = runTrimFill(y, se, 'R0');
+
+  // 5. PET
+  results.pet = runPET(y, se, v);
+
+  // 6. PEESE
+  results.peese = runPEESE(y, se, v);
+
+  // 7. PET-PEESE conditional
+  results.petpeese = runPETPEESE(results.pet, results.peese);
+
+  // 8. 3PSM
+  results.threepsm = run3PSM(y, se, v);
+
+  // 9. P-curve
+  results.pcurve = runPCurve(y, se);
+
+  // 10. P-uniform*
+  results.puniform = runPUniformStar(y, se);
+
+  // 11. WAAP-WLS
+  results.waapwls = runWAAPWLS(y, se, v, re.mu);
+
+  // 12. Limit meta-analysis
+  results.limit = runLimitMA(y, se, v);
+
+  return results;
+}
+
+/* ── 1. Egger's regression ── */
+function runEgger(y, se, w) {
+  var k = y.length;
+  // Standardized effect: z_i = y_i / se_i
+  // Precision: prec_i = 1/se_i
+  // Regress z on prec using OLS (equivalent to WLS of y on 1/se with weights 1/v)
+  var z = [], prec = [];
+  for (var i = 0; i < k; i++) {
+    z.push(y[i] / se[i]);
+    prec.push(1 / se[i]);
+  }
+  // OLS regression z_i = intercept + slope * prec_i
+  var n = k;
+  var sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  for (var i = 0; i < n; i++) {
+    sumX += prec[i]; sumY += z[i];
+    sumXY += prec[i] * z[i]; sumX2 += prec[i] * prec[i];
+  }
+  var xbar = sumX / n, ybar = sumY / n;
+  var slope = (sumXY - n * xbar * ybar) / (sumX2 - n * xbar * xbar);
+  var intercept = ybar - slope * xbar;
+  // Residual SE
+  var ssr = 0;
+  for (var i = 0; i < n; i++) {
+    var r = z[i] - intercept - slope * prec[i];
+    ssr += r * r;
+  }
+  var df = n - 2;
+  var s2 = ssr / df;
+  var seIntercept = Math.sqrt(s2 * (1/n + xbar*xbar / (sumX2 - n*xbar*xbar)));
+  var tStat = intercept / seIntercept;
+  var pVal = tPvalue(tStat, df);
+
+  return {
+    intercept: intercept, seIntercept: seIntercept,
+    slope: slope, t: tStat, p: pVal, df: df
+  };
+}
+
+/* ── 2. Begg's rank correlation ── */
+function runBegg(y, v) {
+  return kendallTau(y, v);
+}
+
+/* ── 3 & 4. Trim-and-fill ── */
+function runTrimFill(y, se, estimator) {
+  var k = y.length;
+  // Use FE pooled as center
+  var fe = fixedEffectMA(y, se);
+  var center = fe.mu;
+
+  // Sort by effect size
+  var idx = [];
+  for (var i = 0; i < k; i++) idx.push(i);
+  idx.sort(function(a,b) { return y[a] - y[b]; });
+
+  var sorted_y = idx.map(function(i) { return y[i]; });
+  var sorted_se = idx.map(function(i) { return se[i]; });
+
+  // Iterative trim-and-fill
+  var k0 = 0;
+  var maxIter = 20;
+
+  for (var iter = 0; iter < maxIter; iter++) {
+    // Re-estimate center from trimmed data
+    var trim_y = [], trim_se = [];
+    // If k0 > 0, trim k0 studies from the side with excess
+    // Determine direction: if center is to the right of median, trim from right (and vice versa)
+    var median_idx = Math.floor(sorted_y.length / 2);
+    var median_y = sorted_y[median_idx];
+
+    if (k0 > 0) {
+      // Determine which side has excess — trim from right if positive asymmetry, left if negative
+      var rightCount = 0, leftCount = 0;
+      for (var i = 0; i < sorted_y.length; i++) {
+        if (sorted_y[i] > center) rightCount++;
+        else leftCount++;
+      }
+      if (rightCount > leftCount) {
+        // Trim from right
+        trim_y = sorted_y.slice(0, sorted_y.length - k0);
+        trim_se = sorted_se.slice(0, sorted_se.length - k0);
+      } else {
+        // Trim from left
+        trim_y = sorted_y.slice(k0);
+        trim_se = sorted_se.slice(k0);
+      }
+    } else {
+      trim_y = sorted_y.slice();
+      trim_se = sorted_se.slice();
+    }
+
+    if (trim_y.length < 2) break;
+
+    var trimFE = fixedEffectMA(trim_y, trim_se);
+    center = trimFE.mu;
+
+    // Compute deviations from center
+    var deviations = sorted_y.map(function(yi) { return yi - center; });
+
+    // Rank of absolute deviations
+    var absDevs = deviations.map(function(d) { return Math.abs(d); });
+    var rankIdx = [];
+    for (var i = 0; i < absDevs.length; i++) rankIdx.push(i);
+    rankIdx.sort(function(a,b) { return absDevs[a] - absDevs[b]; });
+    var ranks = new Array(absDevs.length);
+    for (var i = 0; i < rankIdx.length; i++) ranks[rankIdx[i]] = i + 1;
+
+    // Count studies on the positive side of center (or use signs of deviations)
+    // S = sum of ranks of studies on positive side
+    // Determine the "right" side (side with potentially fewer studies = filled side)
+    var Sn = 0;
+    var positiveCount = 0;
+    for (var i = 0; i < deviations.length; i++) {
+      if (deviations[i] > 0) {
+        Sn += ranks[i];
+        positiveCount++;
+      }
+    }
+    // Also compute for negative side
+    var Sn_neg = 0;
+    var negativeCount = 0;
+    for (var i = 0; i < deviations.length; i++) {
+      if (deviations[i] < 0) {
+        Sn_neg += ranks[i];
+        negativeCount++;
+      }
+    }
+
+    // Use whichever side has fewer studies
+    var S, nSide;
+    if (positiveCount <= negativeCount) {
+      S = Sn; nSide = positiveCount;
+    } else {
+      S = Sn_neg; nSide = negativeCount;
+    }
+
+    var n_total = sorted_y.length;
+    var newK0;
+    if (estimator === 'L0') {
+      // L0: k0 = (4*S - n*(n+1)) / (2*n - 1)  where n = total studies
+      newK0 = Math.max(0, Math.round((4 * S - n_total * (n_total + 1)) / (2 * n_total - 1)));
+    } else {
+      // R0: k0 = (4*S - n*(n+1)) / (2*n + 3) — more conservative (note: different formula variant)
+      newK0 = Math.max(0, Math.round((4 * S - n_total * (n_total + 1)) / (2 * n_total + 3)));
+    }
+
+    if (newK0 === k0) break;
+    k0 = newK0;
+    if (k0 >= k) { k0 = k - 1; break; }
+  }
+
+  // Impute k0 mirror studies
+  var imputed_y = sorted_y.slice();
+  var imputed_se = sorted_se.slice();
+
+  if (k0 > 0) {
+    // Determine direction again
+    var rightCount = 0;
+    for (var i = 0; i < sorted_y.length; i++) {
+      if (sorted_y[i] > center) rightCount++;
+    }
+    var fromRight = rightCount > (sorted_y.length - rightCount);
+    for (var j = 0; j < k0; j++) {
+      var srcIdx = fromRight ? (sorted_y.length - 1 - j) : j;
+      if (srcIdx < 0 || srcIdx >= sorted_y.length) break;
+      var mirrored = 2 * center - sorted_y[srcIdx];
+      imputed_y.push(mirrored);
+      imputed_se.push(sorted_se[srcIdx]);
+    }
+  }
+
+  var adjFE = fixedEffectMA(imputed_y, imputed_se);
+  var adjRE = randomEffectsMA(imputed_y, imputed_se);
+
+  return {
+    k0: k0, estimator: estimator,
+    adjMuFE: adjFE.mu, adjSeFE: adjFE.se,
+    adjMuRE: adjRE.mu, adjSeRE: adjRE.se,
+    imputed_y: imputed_y, imputed_se: imputed_se,
+    center: center
+  };
+}
+
+/* ── 5. PET ── */
+function runPET(y, se, v) {
+  // y_i = beta0 + beta1 * se_i + e_i, weighted by 1/v_i
+  var w = v.map(function(vi) { return 1 / vi; });
+  var reg = wlsRegression(y, se, w);
+  return {
+    adjEstimate: reg.intercept, seAdj: reg.seIntercept,
+    slope: reg.slope, seSlope: reg.seSlope,
+    t: reg.tIntercept, p: reg.pIntercept, df: reg.df
+  };
+}
+
+/* ── 6. PEESE ── */
+function runPEESE(y, se, v) {
+  // y_i = beta0 + beta1 * se_i^2 + e_i, weighted by 1/v_i
+  var w = v.map(function(vi) { return 1 / vi; });
+  var reg = wlsRegression(y, v, w); // x = v = se^2
+  return {
+    adjEstimate: reg.intercept, seAdj: reg.seIntercept,
+    slope: reg.slope, seSlope: reg.seSlope,
+    t: reg.tIntercept, p: reg.pIntercept, df: reg.df
+  };
+}
+
+/* ── 7. PET-PEESE conditional ── */
+function runPETPEESE(pet, peese) {
+  // If PET intercept p < 0.10, use PEESE; else use PET
+  var usePEESE = pet.p < 0.10;
+  return {
+    usePEESE: usePEESE,
+    adjEstimate: usePEESE ? peese.adjEstimate : pet.adjEstimate,
+    seAdj: usePEESE ? peese.seAdj : pet.seAdj,
+    method: usePEESE ? 'PEESE' : 'PET',
+    pet: pet, peese: peese
+  };
+}
+
+/* ── 8. 3-Parameter Selection Model ── */
+function run3PSM(y, se, v) {
+  var k = y.length;
+  // Two-sided p-values
+  var pvals = [];
+  for (var i = 0; i < k; i++) {
+    pvals.push(2 * (1 - normalCDF(Math.abs(y[i] / se[i]))));
+  }
+
+  // Identify significant studies
+  var sig = pvals.map(function(p) { return p < 0.05; });
+  var nSig = sig.filter(Boolean).length;
+  var nNonSig = k - nSig;
+
+  // Initial RE estimate
+  var re = randomEffectsMA(y, se);
+  var mu = re.mu;
+  var tau2 = re.tau2;
+
+  // Optimize by grid search + refinement for delta (selection weight for non-significant)
+  // Log-likelihood: sum_i [ log f(y_i|mu,tau2+v_i) + log w(p_i) ] - k*log(integral)
+  function logLik(mu, tau2, delta) {
+    var ll = 0;
+    for (var i = 0; i < k; i++) {
+      var totalVar = tau2 + v[i];
+      var logf = -0.5 * Math.log(2 * Math.PI * totalVar) - 0.5 * Math.pow(y[i] - mu, 2) / totalVar;
+      var logw = sig[i] ? 0 : Math.log(Math.max(delta, 1e-10));
+      ll += logf + logw;
+    }
+    // Normalizing constant: integral of w(p) * f(y|mu,tau2,v) over y
+    // For each study, the probability of being selected:
+    // P(selected) = P(p<0.05|mu,tau2,v) + delta * P(p>=0.05|mu,tau2,v)
+    for (var i = 0; i < k; i++) {
+      var totalVar = tau2 + v[i];
+      var totalSE = Math.sqrt(totalVar);
+      // P(|y/se| > 1.96) = P(y > 1.96*se) + P(y < -1.96*se) under model
+      var zHi = (1.96 * se[i] - mu) / totalSE;
+      var zLo = (-1.96 * se[i] - mu) / totalSE;
+      var pSig = 1 - normalCDF(zHi) + normalCDF(zLo);
+      var pNonSig = 1 - pSig;
+      var selectProb = pSig + delta * pNonSig;
+      ll -= Math.log(Math.max(selectProb, 1e-10));
+    }
+    return ll;
+  }
+
+  // Grid search for delta from 0.01 to 1.0
+  var bestLL = -Infinity, bestMu = mu, bestTau2 = tau2, bestDelta = 1;
+
+  // Coarse grid
+  for (var dg = 1; dg <= 100; dg++) {
+    var delta = dg / 100;
+    // For each delta, optimize mu and tau2 by simple gradient steps
+    var mTry = mu, t2Try = tau2;
+    for (var step = 0; step < 20; step++) {
+      var ll0 = logLik(mTry, t2Try, delta);
+      // Numerical gradients
+      var eps = 0.001;
+      var dmu = (logLik(mTry + eps, t2Try, delta) - ll0) / eps;
+      var dt2 = (logLik(mTry, Math.max(0, t2Try + eps), delta) - ll0) / eps;
+      mTry += 0.01 * dmu;
+      t2Try = Math.max(0, t2Try + 0.005 * dt2);
+    }
+    var ll = logLik(mTry, t2Try, delta);
+    if (ll > bestLL) {
+      bestLL = ll; bestMu = mTry; bestTau2 = t2Try; bestDelta = delta;
+    }
+  }
+
+  // Fine refinement around best delta
+  for (var dg = Math.max(1, Math.round(bestDelta * 100) - 10);
+       dg <= Math.min(100, Math.round(bestDelta * 100) + 10); dg++) {
+    var delta = dg / 100;
+    var mTry = bestMu, t2Try = bestTau2;
+    for (var step = 0; step < 50; step++) {
+      var ll0 = logLik(mTry, t2Try, delta);
+      var eps = 0.0005;
+      var dmu = (logLik(mTry + eps, t2Try, delta) - ll0) / eps;
+      var dt2 = (logLik(mTry, Math.max(0, t2Try + eps), delta) - ll0) / eps;
+      mTry += 0.005 * dmu;
+      t2Try = Math.max(0, t2Try + 0.002 * dt2);
+    }
+    var ll = logLik(mTry, t2Try, delta);
+    if (ll > bestLL) {
+      bestLL = ll; bestMu = mTry; bestTau2 = t2Try; bestDelta = delta;
+    }
+  }
+
+  // LR test vs model with delta=1
+  var llNull = logLik(re.mu, re.tau2, 1.0);
+  var LR = 2 * (bestLL - llNull);
+  var pLR = LR > 0 ? (1 - normalCDF(Math.sqrt(LR))) : 1; // 50:50 mixture chi-sq
+
+  return {
+    adjMu: bestMu, tau2: bestTau2, delta: bestDelta,
+    nSig: nSig, nNonSig: nNonSig,
+    LR: LR, p: pLR
+  };
+}
+
+/* ── 9. P-curve ── */
+function runPCurve(y, se) {
+  var k = y.length;
+  // Compute two-sided p-values
+  var pvals = [];
+  for (var i = 0; i < k; i++) {
+    var z = y[i] / se[i];
+    pvals.push(2 * (1 - normalCDF(Math.abs(z))));
+  }
+
+  // Select significant studies (p < 0.05)
+  var sigP = pvals.filter(function(p) { return p < 0.05 && p > 0; });
+  var nSig = sigP.length;
+
+  if (nSig < 3) {
+    return {
+      nSig: nSig, insufficient: true,
+      binomRight: null, binomFlat: null, continuous: null,
+      interpretation: 'Fewer than 3 significant studies; p-curve analysis not possible.'
+    };
+  }
+
+  // Binomial test for right-skew: count p-values < 0.025 (half of 0.05)
+  var nBelow025 = sigP.filter(function(p) { return p < 0.025; }).length;
+  // Under flat (no effect), expect 50% below 0.025
+  // Binomial test: P(X >= nBelow025 | n, 0.5)
+  var binomRight = 0;
+  for (var x = nBelow025; x <= nSig; x++) {
+    binomRight += binomPMF(x, nSig, 0.5);
+  }
+
+  // Binomial test for flat: P(X <= nBelow025 | n, 0.5)
+  var binomFlat = 0;
+  for (var x = 0; x <= nBelow025; x++) {
+    binomFlat += binomPMF(x, nSig, 0.5);
+  }
+
+  // Continuous test (Stouffer's Z-based)
+  // pp_i = p_i / 0.05 (conditional on p < 0.05)
+  // Under right-skew, pp should be right-skewed (concentrated near 0)
+  var pp = sigP.map(function(p) { return p / 0.05; });
+  // KS test against uniform(0,1)
+  pp.sort(function(a,b) { return a - b; });
+  // Stouffer combination: Z_i = normalQuantile(1 - pp_i)
+  var sumZ = 0;
+  for (var i = 0; i < pp.length; i++) {
+    sumZ += normalQuantile(1 - pp[i]);
+  }
+  var stoufferZ = sumZ / Math.sqrt(pp.length);
+  var continuousP = 1 - normalCDF(stoufferZ);
+
+  // Interpretation
+  var interp;
+  if (binomRight < 0.05 || continuousP < 0.05) {
+    interp = 'P-curve is right-skewed: studies contain evidential value (true effect likely exists).';
+  } else if (binomFlat < 0.05) {
+    interp = 'P-curve is flat or left-skewed: insufficient evidential value, consistent with p-hacking or no true effect.';
+  } else {
+    interp = 'P-curve is inconclusive: neither clearly right-skewed nor flat.';
+  }
+
+  // Distribution for display: bins [0, 0.01), [0.01, 0.02), ..., [0.04, 0.05)
+  var bins = [0,0,0,0,0];
+  sigP.forEach(function(p) {
+    var idx = Math.min(4, Math.floor(p / 0.01));
+    bins[idx]++;
+  });
+
+  return {
+    nSig: nSig, nBelow025: nBelow025,
+    binomRight: binomRight, binomFlat: binomFlat,
+    stoufferZ: stoufferZ, continuousP: continuousP,
+    bins: bins, interpretation: interp, insufficient: false
+  };
+}
+
+function binomPMF(k, n, p) {
+  return Math.exp(lnBinom(n, k) + k * Math.log(p) + (n - k) * Math.log(1 - p));
+}
+
+function lnBinom(n, k) {
+  return lnGamma(n + 1) - lnGamma(k + 1) - lnGamma(n - k + 1);
+}
+
+/* ── 10. P-uniform* ── */
+function runPUniformStar(y, se) {
+  var k = y.length;
+  // Compute z-values and two-sided p-values
+  var zvals = [], pvals = [];
+  for (var i = 0; i < k; i++) {
+    var z = y[i] / se[i];
+    zvals.push(z);
+    pvals.push(2 * (1 - normalCDF(Math.abs(z))));
+  }
+
+  // Select significant studies
+  var sigIdx = [];
+  for (var i = 0; i < k; i++) {
+    if (pvals[i] < 0.05) sigIdx.push(i);
+  }
+
+  if (sigIdx.length < 3) {
+    return {
+      nSig: sigIdx.length, insufficient: true,
+      adjMu: null, interpretation: 'Fewer than 3 significant studies; p-uniform* not possible.'
+    };
+  }
+
+  // Fixed-effect conditional estimate
+  // For each significant study, compute conditional p-value:
+  // pp_i = P(|z| >= |z_obs| | mu, se_i, p_i < 0.05)
+  // Find mu such that sum of log(pp_i) has zero expectation (mean of pp = 0.5)
+
+  function meanConditionalP(mu) {
+    var sumPP = 0;
+    for (var j = 0; j < sigIdx.length; j++) {
+      var i = sigIdx[j];
+      var zObs = Math.abs(y[i] / se[i]);
+      // Under mu: z ~ N(mu/se_i, 1)
+      var ncp = mu / se[i];
+      // P(|z| >= zObs) = P(z >= zObs) + P(z <= -zObs)
+      var pExceed = (1 - normalCDF(zObs - ncp)) + normalCDF(-zObs - ncp);
+      // P(|z| >= 1.96) = P(significant)
+      var pSig = (1 - normalCDF(1.96 - ncp)) + normalCDF(-1.96 - ncp);
+      var pp = pExceed / Math.max(pSig, 1e-10);
+      pp = Math.max(1e-10, Math.min(1, pp));
+      sumPP += pp;
+    }
+    return sumPP / sigIdx.length - 0.5; // Should equal 0
+  }
+
+  // Bisection to find mu
+  var lo = -5, hi = 5;
+  // Determine direction of effect (majority sign)
+  var posCount = sigIdx.filter(function(i) { return y[i] > 0; }).length;
+  if (posCount < sigIdx.length / 2) { lo = -5; hi = 0.5; }
+  else { lo = -0.5; hi = 5; }
+
+  for (var iter = 0; iter < 100; iter++) {
+    var mid = (lo + hi) / 2;
+    var val = meanConditionalP(mid);
+    if (Math.abs(val) < 1e-6) break;
+    // Check direction
+    var valLo = meanConditionalP(lo);
+    if (valLo * val > 0) lo = mid;
+    else hi = mid;
+  }
+  var adjMu = (lo + hi) / 2;
+
+  // Test statistic: under H0 (mu=0), pp should be uniform
+  var testStat = meanConditionalP(0);
+  var pTest = 2 * (1 - normalCDF(Math.abs(testStat * Math.sqrt(12 * sigIdx.length))));
+
+  return {
+    nSig: sigIdx.length, adjMu: adjMu,
+    testStat: testStat, p: pTest, insufficient: false,
+    interpretation: 'P-uniform* adjusted estimate: ' + fmt(adjMu) + '.'
+  };
+}
+
+/* ── 11. WAAP-WLS ── */
+function runWAAPWLS(y, se, v, naiveEstimate) {
+  var k = y.length;
+  // Power calculation: for each study, power to detect naiveEstimate at alpha=0.05
+  var z05 = 1.96;
+  var powered = [];
+  var poweredIdx = [];
+  for (var i = 0; i < k; i++) {
+    // Power = P(|y/se| > 1.96 | mu = naiveEstimate, se = se_i)
+    // = P(z > 1.96 - mu/se) + P(z < -1.96 - mu/se) where z~N(0,1)
+    var ncp = naiveEstimate / se[i];
+    var power = (1 - normalCDF(z05 - ncp)) + normalCDF(-z05 - ncp);
+    powered.push(power);
+    if (power >= 0.80) poweredIdx.push(i);
+  }
+
+  var result = { nAdequate: poweredIdx.length, nTotal: k, powers: powered };
+
+  if (poweredIdx.length >= 2) {
+    // WAAP: weighted average of adequately powered
+    var waap_y = poweredIdx.map(function(i) { return y[i]; });
+    var waap_se = poweredIdx.map(function(i) { return se[i]; });
+    var waap_v = poweredIdx.map(function(i) { return v[i]; });
+    var waap_w = waap_v.map(function(vi) { return 1 / vi; });
+    // WLS: just inverse-variance weighted mean
+    var sumW = waap_w.reduce(function(a,b) { return a+b; }, 0);
+    var waapEst = weightedMean(waap_y, waap_w);
+    var waapSE = Math.sqrt(1 / sumW);
+    result.adjEstimate = waapEst;
+    result.seAdj = waapSE;
+    result.method = 'WAAP';
+  } else {
+    // Fall back to WLS (unrestricted weighted average)
+    var w = v.map(function(vi) { return 1 / vi; });
+    var wlsReg = wlsRegression(y, se, w);
+    result.adjEstimate = wlsReg.intercept;
+    result.seAdj = wlsReg.seIntercept;
+    result.method = 'WLS (fallback)';
+  }
+
+  return result;
+}
+
+/* ── 12. Limit meta-analysis ── */
+function runLimitMA(y, se, v) {
+  // Regress y on v (variance), intercept = limit estimate at v=0 (infinite precision)
+  var w = v.map(function(vi) { return 1 / vi; });
+  var reg = wlsRegression(y, v, w);
+  return {
+    adjEstimate: reg.intercept, seAdj: reg.seIntercept,
+    slope: reg.slope, seSlope: reg.seSlope,
+    t: reg.tIntercept, p: reg.pIntercept, df: reg.df
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FUNNEL PLOTS (SVG)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function drawFunnel(type) {
+  STATE.activeFunnel = type;
+  var area = document.getElementById('funnelArea');
+  var legend = document.getElementById('funnelLegend');
+  if (!STATE.results) { area.innerHTML = '<p class="text-muted">Run analysis first.</p>'; return; }
+
+  var y = STATE.studies.map(function(s) { return s.y; });
+  var se = STATE.studies.map(function(s) { return s.se; });
+  var names = STATE.studies.map(function(s) { return s.name; });
+  var re = STATE.results.re;
+  var pooled = re.mu;
+
+  // SVG dimensions
+  var W = 700, H = 500;
+  var margin = { top: 30, right: 40, bottom: 50, left: 70 };
+  var pw = W - margin.left - margin.right;
+  var ph = H - margin.top - margin.bottom;
+
+  // Ranges
+  var yMin = Math.min.apply(null, y), yMax = Math.max.apply(null, y);
+  var seMax = Math.max.apply(null, se);
+  var xPad = (yMax - yMin) * 0.2 || 0.5;
+  var xMin = yMin - xPad, xMax = yMax + xPad;
+  // Expand x range to include funnel
+  var funnelXLeft = pooled - 1.96 * seMax * 1.1;
+  var funnelXRight = pooled + 1.96 * seMax * 1.1;
+  xMin = Math.min(xMin, funnelXLeft);
+  xMax = Math.max(xMax, funnelXRight);
+
+  function sx(val) { return margin.left + (val - xMin) / (xMax - xMin) * pw; }
+  function sy(val) { return margin.top + (val / (seMax * 1.1)) * ph; } // SE on y-axis, 0 at top
+
+  var gridColor = getComputedStyle(document.documentElement).getPropertyValue('--svg-grid').trim() || '#ccc';
+  var axisColor = getComputedStyle(document.documentElement).getPropertyValue('--svg-axis').trim() || '#333';
+  var textColor = getComputedStyle(document.documentElement).getPropertyValue('--svg-text').trim() || '#333';
+
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:700px;height:auto">';
+
+  // Background
+  svg += '<rect x="0" y="0" width="' + W + '" height="' + H + '" fill="none"/>';
+
+  // Grid lines
+  var nXTicks = 7, nYTicks = 5;
+  for (var i = 0; i <= nXTicks; i++) {
+    var xv = xMin + (xMax - xMin) * i / nXTicks;
+    var px = sx(xv);
+    svg += '<line x1="' + px + '" y1="' + margin.top + '" x2="' + px + '" y2="' + (H - margin.bottom) + '" stroke="' + gridColor + '" stroke-width="0.5" stroke-dasharray="3,3"/>';
+    svg += '<text x="' + px + '" y="' + (H - margin.bottom + 18) + '" text-anchor="middle" font-size="11" fill="' + textColor + '">' + xv.toFixed(2) + '</text>';
+  }
+  for (var i = 0; i <= nYTicks; i++) {
+    var sev = seMax * 1.1 * i / nYTicks;
+    var py = sy(sev);
+    svg += '<line x1="' + margin.left + '" y1="' + py + '" x2="' + (W - margin.right) + '" y2="' + py + '" stroke="' + gridColor + '" stroke-width="0.5" stroke-dasharray="3,3"/>';
+    svg += '<text x="' + (margin.left - 8) + '" y="' + (py + 4) + '" text-anchor="end" font-size="11" fill="' + textColor + '">' + sev.toFixed(2) + '</text>';
+  }
+
+  // Axis labels
+  svg += '<text x="' + (margin.left + pw/2) + '" y="' + (H - 5) + '" text-anchor="middle" font-size="13" fill="' + textColor + '">Effect Size</text>';
+  svg += '<text x="15" y="' + (margin.top + ph/2) + '" text-anchor="middle" font-size="13" fill="' + textColor + '" transform="rotate(-90,15,' + (margin.top + ph/2) + ')">Standard Error</text>';
+
+  if (type === 'standard') {
+    // Pseudo-95% CI triangle
+    svg += '<polygon points="' +
+      sx(pooled) + ',' + sy(0) + ' ' +
+      sx(pooled - 1.96 * seMax * 1.1) + ',' + sy(seMax * 1.1) + ' ' +
+      sx(pooled + 1.96 * seMax * 1.1) + ',' + sy(seMax * 1.1) +
+      '" fill="rgba(59,130,246,0.08)" stroke="' + gridColor + '" stroke-width="1" stroke-dasharray="5,3"/>';
+    // Pooled line
+    svg += '<line x1="' + sx(pooled) + '" y1="' + sy(0) + '" x2="' + sx(pooled) + '" y2="' + sy(seMax * 1.1) + '" stroke="' + axisColor + '" stroke-width="1.5" stroke-dasharray="4,4"/>';
+    legend.innerHTML = 'Dashed triangle = pseudo-95% CI. Dashed line = pooled estimate (' + fmt(pooled,3) + ').';
+
+  } else if (type === 'contour') {
+    // Contour-enhanced: regions by p-value significance
+    // p < 0.01, p < 0.05, p < 0.10, non-significant
+    var seTop = seMax * 1.1;
+    var cs = getComputedStyle(document.documentElement);
+    var col001 = cs.getPropertyValue('--contour-001').trim();
+    var col005 = cs.getPropertyValue('--contour-005').trim();
+    var col010 = cs.getPropertyValue('--contour-010').trim();
+    var colNS = cs.getPropertyValue('--contour-ns').trim();
+
+    // Build contour regions as polygons
+    // For each SE level, compute the effect boundaries for each significance level
+    // z = y/se, so y = z*se
+    var zThresholds = [
+      { z: 2.576, color: col001, label: 'p < 0.01' },
+      { z: 1.96,  color: col005, label: 'p < 0.05' },
+      { z: 1.645, color: col010, label: 'p < 0.10' }
+    ];
+
+    // Draw from widest to narrowest
+    // Non-significant fill (entire area)
+    svg += '<rect x="' + margin.left + '" y="' + margin.top + '" width="' + pw + '" height="' + ph + '" fill="' + colNS + '"/>';
+
+    // For p < 0.10 regions (both sides)
+    for (var ti = zThresholds.length - 1; ti >= 0; ti--) {
+      var zt = zThresholds[ti];
+      var pts = '';
+      // Right side: y > 0
+      pts += sx(0) + ',' + sy(0) + ' ';
+      for (var si = 0; si <= 20; si++) {
+        var sev = seTop * si / 20;
+        if (sev === 0) continue;
+        pts += sx(zt.z * sev) + ',' + sy(sev) + ' ';
+      }
+      pts += sx(xMax) + ',' + sy(seTop) + ' ';
+      pts += sx(xMax) + ',' + sy(0) + ' ';
+      svg += '<polygon points="' + pts + '" fill="' + zt.color + '"/>';
+      // Left side: y < 0
+      pts = '';
+      pts += sx(0) + ',' + sy(0) + ' ';
+      for (var si = 0; si <= 20; si++) {
+        var sev = seTop * si / 20;
+        if (sev === 0) continue;
+        pts += sx(-zt.z * sev) + ',' + sy(sev) + ' ';
+      }
+      pts += sx(xMin) + ',' + sy(seTop) + ' ';
+      pts += sx(xMin) + ',' + sy(0) + ' ';
+      svg += '<polygon points="' + pts + '" fill="' + zt.color + '"/>';
+    }
+
+    // Pooled line
+    svg += '<line x1="' + sx(pooled) + '" y1="' + sy(0) + '" x2="' + sx(pooled) + '" y2="' + sy(seTop) + '" stroke="' + axisColor + '" stroke-width="1.5" stroke-dasharray="4,4"/>';
+    // Zero line
+    svg += '<line x1="' + sx(0) + '" y1="' + sy(0) + '" x2="' + sx(0) + '" y2="' + sy(seTop) + '" stroke="' + axisColor + '" stroke-width="0.8" stroke-dasharray="2,2"/>';
+
+    legend.innerHTML = '<span style="color:' + col001 + '">&#9632;</span> p&lt;0.01 &nbsp; ' +
+      '<span style="color:' + col005 + '">&#9632;</span> p&lt;0.05 &nbsp; ' +
+      '<span style="color:' + col010 + '">&#9632;</span> p&lt;0.10 &nbsp; ' +
+      '<span style="color:' + colNS + '">&#9632;</span> Non-significant';
+
+  } else if (type === 'sunset') {
+    // Sunset funnel: shade powered vs underpowered regions
+    var seTop = seMax * 1.1;
+    // Studies are "adequately powered" if their SE is small enough to detect the pooled estimate
+    // Threshold: power >= 80% means se <= |pooled| / (z_alpha + z_beta) where z_beta = 0.842
+    var z05 = 1.96, zBeta = 0.842;
+    var powerThreshSE = Math.abs(pooled) / (z05 + zBeta);
+    if (!isFinite(powerThreshSE) || powerThreshSE <= 0) powerThreshSE = seTop * 0.3;
+
+    // Powered region (below threshold SE = top part of plot since SE is inverted)
+    if (powerThreshSE < seTop) {
+      svg += '<rect x="' + margin.left + '" y="' + sy(powerThreshSE) + '" width="' + pw + '" height="' + (sy(seTop) - sy(powerThreshSE)) + '" fill="rgba(234,179,8,0.15)"/>';
+      svg += '<rect x="' + margin.left + '" y="' + margin.top + '" width="' + pw + '" height="' + (sy(powerThreshSE) - margin.top) + '" fill="rgba(34,197,94,0.1)"/>';
+      svg += '<line x1="' + margin.left + '" y1="' + sy(powerThreshSE) + '" x2="' + (W - margin.right) + '" y2="' + sy(powerThreshSE) + '" stroke="' + axisColor + '" stroke-width="1" stroke-dasharray="6,3"/>';
+      svg += '<text x="' + (W - margin.right - 5) + '" y="' + (sy(powerThreshSE) - 5) + '" text-anchor="end" font-size="10" fill="' + textColor + '">80% power threshold</text>';
+    }
+
+    // Pseudo CI triangle
+    svg += '<polygon points="' +
+      sx(pooled) + ',' + sy(0) + ' ' +
+      sx(pooled - 1.96 * seTop) + ',' + sy(seTop) + ' ' +
+      sx(pooled + 1.96 * seTop) + ',' + sy(seTop) +
+      '" fill="none" stroke="' + gridColor + '" stroke-width="1" stroke-dasharray="5,3"/>';
+    svg += '<line x1="' + sx(pooled) + '" y1="' + sy(0) + '" x2="' + sx(pooled) + '" y2="' + sy(seTop) + '" stroke="' + axisColor + '" stroke-width="1.5" stroke-dasharray="4,4"/>';
+
+    legend.innerHTML = '<span style="color:rgba(34,197,94,0.6)">&#9632;</span> Adequately powered (SE &lt; ' + fmt(powerThreshSE,3) + ') &nbsp; ' +
+      '<span style="color:rgba(234,179,8,0.5)">&#9632;</span> Underpowered';
+  }
+
+  // Plot study points
+  for (var i = 0; i < y.length; i++) {
+    var cx = sx(y[i]), cy = sy(se[i]);
+    svg += '<circle cx="' + cx + '" cy="' + cy + '" r="5" fill="' + (type === 'contour' ? '#1e40af' : 'var(--accent)') + '" stroke="white" stroke-width="1.5" opacity="0.85">';
+    svg += '<title>' + escapeHtml(names[i]) + ': y=' + fmt(y[i],3) + ', SE=' + fmt(se[i],3) + '</title>';
+    svg += '</circle>';
+  }
+
+  // If trim-and-fill, show imputed studies
+  if (type === 'standard' && STATE.results.trimfillL0 && STATE.results.trimfillL0.k0 > 0) {
+    var tf = STATE.results.trimfillL0;
+    for (var i = y.length; i < tf.imputed_y.length; i++) {
+      var cx = sx(tf.imputed_y[i]), cy = sy(tf.imputed_se[i]);
+      svg += '<circle cx="' + cx + '" cy="' + cy + '" r="5" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.8">';
+      svg += '<title>Imputed study: y=' + fmt(tf.imputed_y[i],3) + ', SE=' + fmt(tf.imputed_se[i],3) + '</title>';
+      svg += '</circle>';
+    }
+  }
+
+  // Axes
+  svg += '<line x1="' + margin.left + '" y1="' + (H - margin.bottom) + '" x2="' + (W - margin.right) + '" y2="' + (H - margin.bottom) + '" stroke="' + axisColor + '" stroke-width="1.5"/>';
+  svg += '<line x1="' + margin.left + '" y1="' + margin.top + '" x2="' + margin.left + '" y2="' + (H - margin.bottom) + '" stroke="' + axisColor + '" stroke-width="1.5"/>';
+
+  // Title
+  var titles = { standard: 'Standard Funnel Plot', contour: 'Contour-Enhanced Funnel Plot', sunset: 'Sunset Funnel Plot' };
+  svg += '<text x="' + (W/2) + '" y="18" text-anchor="middle" font-size="14" font-weight="bold" fill="' + textColor + '">' + titles[type] + '</text>';
+
+  svg += '</svg>';
+  area.innerHTML = svg;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RENDER STATISTICAL TESTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function renderTests() {
+  var r = STATE.results;
+  if (!r) return;
+  var container = document.getElementById('testsContainer');
+  var html = '';
+
+  var effectLabel = STATE.effectType;
+
+  // Naive pooled
+  html += '<div class="card mb-16">' +
+    '<h3>Pooled Estimates (Reference)</h3>' +
+    '<div class="stat-row">' +
+    '<span><span class="stat-label">Fixed-effect:</span> ' + fmt(r.fe.mu) + ' (SE ' + fmt(r.fe.se) + ')</span>' +
+    '<span><span class="stat-label">Random-effects (DL):</span> ' + fmt(r.re.mu) + ' (SE ' + fmt(r.re.se) + ')</span>' +
+    '<span><span class="stat-label">tau2:</span> ' + fmt(r.re.tau2) + '</span>' +
+    '<span><span class="stat-label">I2:</span> ' + fmt(r.re.I2 * 100, 1) + '%</span>' +
+    '<span><span class="stat-label">k:</span> ' + r.k + '</span>' +
+    '</div></div>';
+
+  // 1. Egger
+  html += methodCard('1. Egger\'s Regression Test',
+    'Regresses standardized effect on precision to detect funnel asymmetry (Egger et al., 1997).',
+    [
+      ['Intercept', fmt(r.egger.intercept)],
+      ['SE(intercept)', fmt(r.egger.seIntercept)],
+      ['t', fmt(r.egger.t, 3)],
+      ['p-value', fmtP(r.egger.p)],
+      ['df', r.egger.df]
+    ],
+    interpFromP(r.egger.p, 'funnel asymmetry', 'Egger\'s test')
+  );
+
+  // 2. Begg
+  html += methodCard('2. Begg\'s Rank Correlation',
+    'Kendall\'s tau between effect sizes and variances (Begg & Mazumdar, 1994).',
+    [
+      ['Kendall\'s tau', fmt(r.begg.tau, 3)],
+      ['z', fmt(r.begg.z, 3)],
+      ['p-value', fmtP(r.begg.p)]
+    ],
+    interpFromP(r.begg.p, 'rank correlation', 'Begg\'s test')
+  );
+
+  // 3. Trim-and-fill L0
+  html += methodCard('3. Trim-and-Fill (L0 estimator)',
+    'Duval-Tweedie method with L0 estimator. Imputes "missing" studies to symmetrize funnel (Duval & Tweedie, 2000).',
+    [
+      ['Imputed studies (k0)', r.trimfillL0.k0],
+      ['Adjusted FE estimate', fmt(r.trimfillL0.adjMuFE)],
+      ['SE (adjusted FE)', fmt(r.trimfillL0.adjSeFE)],
+      ['Adjusted RE estimate', fmt(r.trimfillL0.adjMuRE)],
+      ['SE (adjusted RE)', fmt(r.trimfillL0.adjSeRE)]
+    ],
+    r.trimfillL0.k0 > 0
+      ? { text: r.trimfillL0.k0 + ' studies imputed on the less populated side. Adjusted estimate shifted from ' + fmt(r.re.mu) + ' to ' + fmt(r.trimfillL0.adjMuRE) + '.', level: 'amber' }
+      : { text: 'No asymmetry detected; no studies imputed.', level: 'green' }
+  );
+
+  // 4. Trim-and-fill R0
+  html += methodCard('4. Trim-and-Fill (R0 estimator)',
+    'Duval-Tweedie with R0 estimator (more conservative).',
+    [
+      ['Imputed studies (k0)', r.trimfillR0.k0],
+      ['Adjusted FE estimate', fmt(r.trimfillR0.adjMuFE)],
+      ['SE (adjusted FE)', fmt(r.trimfillR0.adjSeFE)],
+      ['Adjusted RE estimate', fmt(r.trimfillR0.adjMuRE)],
+      ['SE (adjusted RE)', fmt(r.trimfillR0.adjSeRE)]
+    ],
+    r.trimfillR0.k0 > 0
+      ? { text: r.trimfillR0.k0 + ' studies imputed (R0). Adjusted RE estimate: ' + fmt(r.trimfillR0.adjMuRE) + '.', level: 'amber' }
+      : { text: 'No asymmetry detected (R0); no studies imputed.', level: 'green' }
+  );
+
+  // 5. PET
+  html += methodCard('5. PET (Precision-Effect Test)',
+    'WLS regression of effect on SE. Intercept estimates bias-adjusted effect (Stanley & Doucouliagos, 2014).',
+    [
+      ['Adjusted estimate (intercept)', fmt(r.pet.adjEstimate)],
+      ['SE', fmt(r.pet.seAdj)],
+      ['t', fmt(r.pet.t, 3)],
+      ['p-value (intercept)', fmtP(r.pet.p)]
+    ],
+    interpFromP(r.pet.p, 'effect after bias adjustment', 'PET')
+  );
+
+  // 6. PEESE
+  html += methodCard('6. PEESE (Precision-Effect Estimate with SE)',
+    'WLS regression of effect on SE-squared. Used when PET rejects null (Stanley & Doucouliagos, 2014).',
+    [
+      ['Adjusted estimate (intercept)', fmt(r.peese.adjEstimate)],
+      ['SE', fmt(r.peese.seAdj)],
+      ['t', fmt(r.peese.t, 3)],
+      ['p-value (intercept)', fmtP(r.peese.p)]
+    ],
+    interpFromP(r.peese.p, 'effect after PEESE adjustment', 'PEESE')
+  );
+
+  // 7. PET-PEESE conditional
+  html += methodCard('7. PET-PEESE (Conditional)',
+    'If PET intercept p < 0.10, use PEESE; otherwise use PET.',
+    [
+      ['Selected method', r.petpeese.method],
+      ['Adjusted estimate', fmt(r.petpeese.adjEstimate)],
+      ['SE', fmt(r.petpeese.seAdj)],
+      ['PET p-value', fmtP(r.pet.p)]
+    ],
+    { text: 'Using ' + r.petpeese.method + ': adjusted estimate = ' + fmt(r.petpeese.adjEstimate) + '.', level: Math.abs(r.petpeese.adjEstimate) < Math.abs(r.re.mu) * 0.5 ? 'red' : 'green' }
+  );
+
+  // 8. 3PSM
+  html += methodCard('8. 3-Parameter Selection Model (3PSM)',
+    'Likelihood-based model estimating selection weight for non-significant studies (Vevea & Hedges, 1995).',
+    [
+      ['Adjusted mu', fmt(r.threepsm.adjMu)],
+      ['tau2', fmt(r.threepsm.tau2)],
+      ['delta (selection weight)', fmt(r.threepsm.delta, 2)],
+      ['Significant studies', r.threepsm.nSig],
+      ['Non-significant studies', r.threepsm.nNonSig],
+      ['LR statistic', fmt(r.threepsm.LR, 2)],
+      ['p-value', fmtP(r.threepsm.p)]
+    ],
+    r.threepsm.delta < 0.5
+      ? { text: 'Strong evidence of selection bias: non-significant studies are estimated to have only ' + fmt(r.threepsm.delta * 100, 0) + '% the probability of being published.', level: 'red' }
+      : r.threepsm.delta < 0.8
+        ? { text: 'Moderate selection: non-significant studies have ~' + fmt(r.threepsm.delta * 100, 0) + '% publication probability relative to significant ones.', level: 'amber' }
+        : { text: 'Minimal selection detected (delta = ' + fmt(r.threepsm.delta, 2) + ').', level: 'green' }
+  );
+
+  // 9. P-curve
+  if (r.pcurve.insufficient) {
+    html += methodCard('9. P-curve',
+      'Tests distribution of significant p-values for evidential value (Simonsohn et al., 2014).',
+      [['Significant studies', r.pcurve.nSig]],
+      { text: r.pcurve.interpretation, level: 'amber' }
+    );
+  } else {
+    html += methodCard('9. P-curve',
+      'Tests distribution of significant p-values for evidential value vs. p-hacking (Simonsohn et al., 2014).',
+      [
+        ['Significant studies', r.pcurve.nSig],
+        ['p < 0.025 count', r.pcurve.nBelow025],
+        ['Binomial right-skew p', fmtP(r.pcurve.binomRight)],
+        ['Binomial flat p', fmtP(r.pcurve.binomFlat)],
+        ['Stouffer Z', fmt(r.pcurve.stoufferZ, 3)],
+        ['Continuous test p', fmtP(r.pcurve.continuousP)]
+      ],
+      { text: r.pcurve.interpretation, level: r.pcurve.binomRight < 0.05 ? 'green' : (r.pcurve.binomFlat < 0.05 ? 'red' : 'amber') }
+    );
+  }
+
+  // 10. P-uniform*
+  if (r.puniform.insufficient) {
+    html += methodCard('10. P-uniform*',
+      'Conditional p-value approach for bias-adjusted fixed-effect estimate (van Aert et al., 2016).',
+      [['Significant studies', r.puniform.nSig]],
+      { text: r.puniform.interpretation, level: 'amber' }
+    );
+  } else {
+    html += methodCard('10. P-uniform*',
+      'Conditional p-value approach for bias-adjusted fixed-effect estimate (van Aert et al., 2016).',
+      [
+        ['Significant studies', r.puniform.nSig],
+        ['Adjusted estimate', fmt(r.puniform.adjMu)],
+        ['p-value', fmtP(r.puniform.p)]
+      ],
+      { text: r.puniform.interpretation, level: Math.abs(r.puniform.adjMu) < Math.abs(r.re.mu) * 0.3 ? 'red' : 'green' }
+    );
+  }
+
+  // 11. WAAP-WLS
+  html += methodCard('11. WAAP-WLS',
+    'Weighted average of adequately powered studies (power >= 80%). Falls back to WLS if < 2 studies qualify (Ioannidis et al., 2017).',
+    [
+      ['Method used', r.waapwls.method],
+      ['Adequately powered studies', r.waapwls.nAdequate + ' / ' + r.waapwls.nTotal],
+      ['Adjusted estimate', fmt(r.waapwls.adjEstimate)],
+      ['SE', fmt(r.waapwls.seAdj)]
+    ],
+    r.waapwls.nAdequate < r.waapwls.nTotal * 0.3
+      ? { text: 'Only ' + r.waapwls.nAdequate + ' of ' + r.waapwls.nTotal + ' studies had >= 80% power. Many underpowered studies suggests potential bias.', level: 'amber' }
+      : { text: r.waapwls.nAdequate + ' studies adequately powered. WAAP estimate: ' + fmt(r.waapwls.adjEstimate) + '.', level: 'green' }
+  );
+
+  // 12. Limit meta-analysis
+  html += methodCard('12. Limit Meta-Analysis',
+    'Extrapolates effect to infinite precision by regressing on variance (R&uuml;cker et al., 2011).',
+    [
+      ['Limit estimate (intercept)', fmt(r.limit.adjEstimate)],
+      ['SE', fmt(r.limit.seAdj)],
+      ['Slope', fmt(r.limit.slope)],
+      ['t (intercept)', fmt(r.limit.t, 3)],
+      ['p-value', fmtP(r.limit.p)]
+    ],
+    interpFromP(r.limit.p, 'effect at infinite precision', 'Limit MA')
+  );
+
+  container.innerHTML = html;
+}
+
+function methodCard(title, description, stats, interp) {
+  var html = '<div class="method-card">';
+  html += '<h4>' + title + '</h4>';
+  html += '<p class="text-sm text-muted mb-8">' + description + '</p>';
+  html += '<div class="stat-row">';
+  stats.forEach(function(s) {
+    html += '<span><span class="stat-label">' + escapeHtml(s[0]) + ':</span> ' + escapeHtml(String(s[1])) + '</span>';
+  });
+  html += '</div>';
+  if (interp) {
+    var cls = 'interp-' + (interp.level || 'amber');
+    html += '<div class="interpretation ' + cls + '">' + escapeHtml(interp.text) + '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function interpFromP(p, what, testName) {
+  if (p < 0.01) return { text: testName + ': strong evidence of ' + what + ' (p = ' + fmtP(p) + ').', level: 'red' };
+  if (p < 0.05) return { text: testName + ': evidence of ' + what + ' (p = ' + fmtP(p) + ').', level: 'amber' };
+  if (p < 0.10) return { text: testName + ': weak evidence of ' + what + ' (p = ' + fmtP(p) + ').', level: 'amber' };
+  return { text: testName + ': no significant evidence of ' + what + ' (p = ' + fmtP(p) + ').', level: 'green' };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SENSITIVITY DASHBOARD
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function renderSensitivity() {
+  var r = STATE.results;
+  if (!r) return;
+
+  // Collect all adjusted estimates
+  var methods = [
+    { name: 'Naive RE (DL)', est: r.re.mu, se: r.re.se, color: '#6b7280' },
+    { name: 'Trim-Fill L0', est: r.trimfillL0.adjMuRE, se: r.trimfillL0.adjSeRE, color: '#2563eb' },
+    { name: 'Trim-Fill R0', est: r.trimfillR0.adjMuRE, se: r.trimfillR0.adjSeRE, color: '#3b82f6' },
+    { name: 'PET', est: r.pet.adjEstimate, se: r.pet.seAdj, color: '#8b5cf6' },
+    { name: 'PEESE', est: r.peese.adjEstimate, se: r.peese.seAdj, color: '#a78bfa' },
+    { name: 'PET-PEESE', est: r.petpeese.adjEstimate, se: r.petpeese.seAdj, color: '#7c3aed' },
+    { name: '3PSM', est: r.threepsm.adjMu, se: null, color: '#ec4899' },
+    { name: 'WAAP-WLS', est: r.waapwls.adjEstimate, se: r.waapwls.seAdj, color: '#f59e0b' },
+    { name: 'Limit MA', est: r.limit.adjEstimate, se: r.limit.seAdj, color: '#10b981' }
+  ];
+
+  if (!r.puniform.insufficient) {
+    methods.push({ name: 'P-uniform*', est: r.puniform.adjMu, se: null, color: '#06b6d4' });
+  }
+
+  // Draw horizontal bar chart (SVG)
+  var W = 700, barH = 28, gap = 6;
+  var nBars = methods.length;
+  var H = 50 + nBars * (barH + gap) + 30;
+  var margin = { left: 110, right: 40, top: 30, bottom: 30 };
+  var pw = W - margin.left - margin.right;
+
+  // Range
+  var allVals = [];
+  methods.forEach(function(m) {
+    if (m.est != null && isFinite(m.est)) {
+      allVals.push(m.est);
+      if (m.se != null) {
+        allVals.push(m.est - 1.96 * m.se);
+        allVals.push(m.est + 1.96 * m.se);
+      }
+    }
+  });
+  var xMin = Math.min.apply(null, allVals) - 0.1;
+  var xMax = Math.max.apply(null, allVals) + 0.1;
+
+  function sx(v) { return margin.left + (v - xMin) / (xMax - xMin) * pw; }
+
+  var textColor = getComputedStyle(document.documentElement).getPropertyValue('--svg-text').trim() || '#333';
+  var gridColor = getComputedStyle(document.documentElement).getPropertyValue('--svg-grid').trim() || '#ccc';
+
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:700px;height:auto">';
+  svg += '<text x="' + (W/2) + '" y="18" text-anchor="middle" font-size="14" font-weight="bold" fill="' + textColor + '">Adjusted Estimates Comparison</text>';
+
+  // Zero line
+  if (xMin < 0 && xMax > 0) {
+    svg += '<line x1="' + sx(0) + '" y1="' + margin.top + '" x2="' + sx(0) + '" y2="' + (H - margin.bottom) + '" stroke="' + gridColor + '" stroke-width="1" stroke-dasharray="4,3"/>';
+  }
+
+  methods.forEach(function(m, i) {
+    var cy = margin.top + i * (barH + gap) + barH / 2;
+    // Label
+    svg += '<text x="' + (margin.left - 6) + '" y="' + (cy + 4) + '" text-anchor="end" font-size="11" fill="' + textColor + '">' + m.name + '</text>';
+    // CI whisker
+    if (m.se != null && isFinite(m.se)) {
+      var lo = m.est - 1.96 * m.se;
+      var hi = m.est + 1.96 * m.se;
+      svg += '<line x1="' + sx(lo) + '" y1="' + cy + '" x2="' + sx(hi) + '" y2="' + cy + '" stroke="' + m.color + '" stroke-width="2"/>';
+      svg += '<line x1="' + sx(lo) + '" y1="' + (cy - 6) + '" x2="' + sx(lo) + '" y2="' + (cy + 6) + '" stroke="' + m.color + '" stroke-width="2"/>';
+      svg += '<line x1="' + sx(hi) + '" y1="' + (cy - 6) + '" x2="' + sx(hi) + '" y2="' + (cy + 6) + '" stroke="' + m.color + '" stroke-width="2"/>';
+    }
+    // Point
+    if (m.est != null && isFinite(m.est)) {
+      svg += '<circle cx="' + sx(m.est) + '" cy="' + cy + '" r="5" fill="' + m.color + '"/>';
+      svg += '<text x="' + (sx(m.est) + 8) + '" y="' + (cy + 4) + '" font-size="10" fill="' + textColor + '">' + fmt(m.est, 3) + '</text>';
+    }
+  });
+
+  // X axis
+  var nTicks = 6;
+  for (var i = 0; i <= nTicks; i++) {
+    var xv = xMin + (xMax - xMin) * i / nTicks;
+    svg += '<text x="' + sx(xv) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="10" fill="' + textColor + '">' + xv.toFixed(2) + '</text>';
+  }
+
+  svg += '</svg>';
+  document.getElementById('comparisonChart').innerHTML = svg;
+
+  // Traffic light summary
+  var signals = [];
+  // Egger
+  signals.push({ name: "Egger's test", p: r.egger.p });
+  signals.push({ name: "Begg's test", p: r.begg.p });
+  signals.push({ name: 'Trim-fill L0', indicator: r.trimfillL0.k0 > 0 ? (r.trimfillL0.k0 >= 3 ? 'red' : 'amber') : 'green' });
+  signals.push({ name: '3PSM selection', indicator: r.threepsm.delta < 0.5 ? 'red' : (r.threepsm.delta < 0.8 ? 'amber' : 'green') });
+  if (!r.pcurve.insufficient) {
+    signals.push({ name: 'P-curve', indicator: r.pcurve.binomRight < 0.05 ? 'green' : (r.pcurve.binomFlat < 0.05 ? 'red' : 'amber') });
+  }
+
+  var trafficHtml = '<div class="flex gap-8 flex-wrap">';
+  signals.forEach(function(s) {
+    var level = s.indicator || (s.p < 0.05 ? 'red' : (s.p < 0.10 ? 'amber' : 'green'));
+    trafficHtml += '<span class="traffic-light tl-' + level + '">' + escapeHtml(s.name) + ': ' + level.toUpperCase() + '</span>';
+  });
+  trafficHtml += '</div>';
+  document.getElementById('trafficSummary').innerHTML = trafficHtml;
+
+  // Verdict
+  var redCount = signals.filter(function(s) {
+    var lv = s.indicator || (s.p < 0.05 ? 'red' : (s.p < 0.10 ? 'amber' : 'green'));
+    return lv === 'red';
+  }).length;
+  var amberCount = signals.filter(function(s) {
+    var lv = s.indicator || (s.p < 0.05 ? 'red' : (s.p < 0.10 ? 'amber' : 'green'));
+    return lv === 'amber';
+  }).length;
+
+  var verdict;
+  if (redCount >= 3) {
+    verdict = 'Strong evidence of publication bias. Multiple methods indicate funnel asymmetry, selection effects, or inflated estimates. The naive pooled estimate (' + fmt(r.re.mu) + ') should be interpreted with caution. Bias-adjusted estimates range from ' + fmt(Math.min.apply(null, methods.filter(function(m){return m.est!=null&&isFinite(m.est)&&m.name!=='Naive RE (DL)';}).map(function(m){return m.est;}))) + ' to ' + fmt(Math.max.apply(null, methods.filter(function(m){return m.est!=null&&isFinite(m.est)&&m.name!=='Naive RE (DL)';}).map(function(m){return m.est;}))) + '.';
+  } else if (redCount >= 1 || amberCount >= 2) {
+    verdict = 'Some evidence of publication bias. At least one method flags concern. The pooled estimate (' + fmt(r.re.mu) + ') may be somewhat inflated. Consider the range of adjusted estimates in the comparison chart.';
+  } else {
+    verdict = 'Little evidence of publication bias across methods. The pooled estimate (' + fmt(r.re.mu) + ') appears reasonably robust. However, absence of evidence is not evidence of absence.';
+  }
+  document.getElementById('verdictText').innerHTML = '<p style="font-size:14px;line-height:1.7">' + escapeHtml(verdict) + '</p>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REPORT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function renderReport() {
+  var r = STATE.results;
+  if (!r) return;
+
+  // Methods text
+  var k = r.k;
+  var methodsText = 'Publication bias was assessed using 12 complementary methods. ' +
+    'Funnel plot asymmetry was evaluated visually using standard, contour-enhanced (Peters et al., 2008), ' +
+    'and sunset (Schauer & Hedges, 2020) funnel plots. ' +
+    'Formal asymmetry testing was performed using Egger\'s regression test (Egger et al., 1997) and ' +
+    'Begg\'s rank correlation test (Begg & Mazumdar, 1994). ' +
+    'The trim-and-fill method (Duval & Tweedie, 2000) was applied using both L0 and R0 estimators. ' +
+    'Regression-based bias correction used PET and PEESE (Stanley & Doucouliagos, 2014), applied ' +
+    'conditionally as recommended (PET-PEESE). ' +
+    'A 3-parameter selection model (3PSM; Vevea & Hedges, 1995) estimated the relative likelihood of ' +
+    'publication for non-significant versus significant results. ' +
+    'P-curve analysis (Simonsohn et al., 2014) tested the distribution of significant p-values for evidential ' +
+    'value versus p-hacking. ' +
+    'P-uniform* (van Aert et al., 2016) provided a conditional bias-adjusted fixed-effect estimate. ' +
+    'WAAP-WLS (Ioannidis et al., 2017) restricted estimation to adequately powered studies (>=80% power). ' +
+    'Finally, limit meta-analysis (Rucker et al., 2011) extrapolated the pooled estimate to infinite precision.';
+
+  document.getElementById('methodsText').innerHTML = '<p style="font-size:13px;line-height:1.7">' + escapeHtml(methodsText) + '</p>';
+
+  // R code
+  var rCode = '# Publication Bias Assessment in R\n' +
+    '# Requires: metafor, puniform, dmetar\n\n' +
+    'library(metafor)\n\n' +
+    '# Data\n' +
+    'yi <- c(' + STATE.studies.map(function(s){return s.y;}).join(', ') + ')\n' +
+    'sei <- c(' + STATE.studies.map(function(s){return s.se;}).join(', ') + ')\n\n' +
+    '# Random-effects model\n' +
+    'res <- rma(yi, sei=sei, method="DL")\n' +
+    'summary(res)\n\n' +
+    '# Funnel plot\n' +
+    'funnel(res)\n\n' +
+    '# Egger\'s test\n' +
+    'regtest(res, model="lm")\n\n' +
+    '# Begg\'s test\n' +
+    'ranktest(res)\n\n' +
+    '# Trim-and-fill\n' +
+    'trimfill(res, estimator="L0")\n' +
+    'trimfill(res, estimator="R0")\n\n' +
+    '# PET-PEESE\n' +
+    'pet <- rma(yi, sei=sei, mods=~sei, method="FE")\n' +
+    'peese <- rma(yi, sei=sei, mods=~I(sei^2), method="FE")\n\n' +
+    '# Selection model (3PSM)\n' +
+    'selmodel(res, type="stepfun", steps=c(0.05))\n\n' +
+    '# P-curve (use pcurve R package or webtool)\n' +
+    '# puniform::puniform(yi, sei=sei)\n\n' +
+    '# Limit meta-analysis\n' +
+    'limitmeta <- rma(yi, sei=sei, mods=~I(sei^2), method="FE")\n';
+
+  document.getElementById('rCode').innerHTML = '<pre class="code-block">' + escapeHtml(rCode) + '</pre>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXPORTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function exportCSV() {
+  var r = STATE.results;
+  if (!r) { alert('Run analysis first.'); return; }
+  var lines = ['Method,Estimate,SE,p-value,Details'];
+  lines.push('Naive RE (DL),' + r.re.mu + ',' + r.re.se + ',,tau2=' + r.re.tau2);
+  lines.push('Egger intercept,' + r.egger.intercept + ',' + r.egger.seIntercept + ',' + r.egger.p + ',');
+  lines.push('Begg tau,' + r.begg.tau + ',,' + r.begg.p + ',');
+  lines.push('Trim-Fill L0,' + r.trimfillL0.adjMuRE + ',' + r.trimfillL0.adjSeRE + ',,k0=' + r.trimfillL0.k0);
+  lines.push('Trim-Fill R0,' + r.trimfillR0.adjMuRE + ',' + r.trimfillR0.adjSeRE + ',,k0=' + r.trimfillR0.k0);
+  lines.push('PET,' + r.pet.adjEstimate + ',' + r.pet.seAdj + ',' + r.pet.p + ',');
+  lines.push('PEESE,' + r.peese.adjEstimate + ',' + r.peese.seAdj + ',' + r.peese.p + ',');
+  lines.push('PET-PEESE,' + r.petpeese.adjEstimate + ',' + r.petpeese.seAdj + ',,method=' + r.petpeese.method);
+  lines.push('3PSM,' + r.threepsm.adjMu + ',,,' + 'delta=' + r.threepsm.delta);
+  if (!r.puniform.insufficient) lines.push('P-uniform*,' + r.puniform.adjMu + ',,' + r.puniform.p + ',');
+  lines.push('WAAP-WLS,' + r.waapwls.adjEstimate + ',' + r.waapwls.seAdj + ',,method=' + r.waapwls.method);
+  lines.push('Limit MA,' + r.limit.adjEstimate + ',' + r.limit.seAdj + ',' + r.limit.p + ',');
+
+  var blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'pubbias-results.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportJSON() {
+  var r = STATE.results;
+  if (!r) { alert('Run analysis first.'); return; }
+  var blob = new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'pubbias-results.json';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EVENT WIRING
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function init() {
+  initTabs();
+  initDarkMode();
+
+  // Example data buttons
+  document.getElementById('btnBCG').addEventListener('click', function() {
+    loadDataset(BCG_DATA, 'logRR');
+  });
+  document.getElementById('btnAntidep').addEventListener('click', function() {
+    loadDataset(ANTIDEP_DATA, 'SMD');
+  });
+
+  // Effect type
+  document.getElementById('effectType').addEventListener('change', function() {
+    STATE.effectType = this.value;
+    saveState();
+  });
+
+  // Add/delete row
+  document.getElementById('btnAddRow').addEventListener('click', function() {
+    addRow('', 0, 0.1);
+    renderDataTable();
+  });
+  document.getElementById('btnDeleteLast').addEventListener('click', function() {
+    STATE.studies.pop();
+    renderDataTable();
+  });
+  document.getElementById('btnClear').addEventListener('click', function() {
+    STATE.studies = [];
+    renderDataTable();
+  });
+  document.getElementById('btnReset').addEventListener('click', function() {
+    if (confirm('Reset all data and results?')) {
+      STATE.studies = [];
+      STATE.results = null;
+      localStorage.removeItem(LS_KEY);
+      renderDataTable();
+      document.getElementById('funnelArea').innerHTML = '<p class="text-muted">Run analysis first.</p>';
+      document.getElementById('testsContainer').innerHTML = '<p class="text-muted">Run analysis first.</p>';
+      document.getElementById('comparisonChart').innerHTML = '<p class="text-muted">Run analysis first.</p>';
+      document.getElementById('trafficSummary').innerHTML = '<p class="text-muted">Run analysis first.</p>';
+      document.getElementById('verdictText').innerHTML = '<p class="text-muted">Run analysis first.</p>';
+      document.getElementById('methodsText').innerHTML = '<p class="text-muted">Run analysis first.</p>';
+      document.getElementById('rCode').innerHTML = '<p class="text-muted">Run analysis first.</p>';
+    }
+  });
+
+  // Data table edits (delegated)
+  document.getElementById('dataBody').addEventListener('input', function(e) {
+    var inp = e.target;
+    if (!inp.dataset.idx) return;
+    var idx = parseInt(inp.dataset.idx);
+    var field = inp.dataset.field;
+    if (field === 'name') STATE.studies[idx].name = inp.value;
+    else if (field === 'y') STATE.studies[idx].y = parseFloat(inp.value) || 0;
+    else if (field === 'se') STATE.studies[idx].se = parseFloat(inp.value) || 0.01;
+    saveState();
+  });
+  document.getElementById('dataBody').addEventListener('click', function(e) {
+    if (e.target.dataset.delete != null) {
+      var idx = parseInt(e.target.dataset.delete);
+      STATE.studies.splice(idx, 1);
+      renderDataTable();
+    }
+  });
+
+  // CSV paste
+  document.getElementById('btnParseCsv').addEventListener('click', function() {
+    var raw = document.getElementById('csvInput').value.trim();
+    if (!raw) return;
+    var lines = raw.split('\n');
+    STATE.studies = [];
+    lines.forEach(function(line) {
+      line = line.trim();
+      if (!line || line.toLowerCase().startsWith('study,')) return; // skip header
+      var parts = line.split(',');
+      if (parts.length >= 3) {
+        var name = parts[0].trim();
+        var y = parseFloat(parts[1]);
+        var se = parseFloat(parts[2]);
+        if (isFinite(y) && isFinite(se) && se > 0) {
+          STATE.studies.push({ name: name, y: y, se: se });
+        }
+      }
+    });
+    renderDataTable();
+  });
+
+  // Funnel selector
+  document.querySelectorAll('.funnel-selector button').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.funnel-selector button').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      drawFunnel(btn.dataset.funnel);
+    });
+  });
+
+  // RUN ALL
+  document.getElementById('btnRunAll').addEventListener('click', function() {
+    if (STATE.studies.length < 3) {
+      alert('Need at least 3 studies to run analysis.');
+      return;
+    }
+    // Validate data
+    var valid = STATE.studies.every(function(s) {
+      return isFinite(s.y) && isFinite(s.se) && s.se > 0;
+    });
+    if (!valid) {
+      alert('All studies must have finite effect sizes and positive standard errors.');
+      return;
+    }
+
+    var y = STATE.studies.map(function(s) { return s.y; });
+    var se = STATE.studies.map(function(s) { return s.se; });
+
+    STATE.results = runAllTests(y, se);
+
+    drawFunnel(STATE.activeFunnel);
+    renderTests();
+    renderSensitivity();
+    renderReport();
+
+    // Switch to tests tab
+    document.getElementById('tab-tests').click();
+  });
+
+  // Export buttons
+  document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
+  document.getElementById('btnExportJSON').addEventListener('click', exportJSON);
+
+  // Load saved state
+  loadState();
+
+  // Start with empty rows
+  if (STATE.studies.length === 0) {
+    for (var i = 0; i < 5; i++) addRow('Study ' + (i+1), 0, 0.1);
+    renderDataTable();
+  }
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
