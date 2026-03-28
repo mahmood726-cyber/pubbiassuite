@@ -1,0 +1,96 @@
+{
+  "title": "PubBias Suite: Comprehensive Publication Bias Assessment with 12 Methods and 3 Funnel Plot Variants",
+  "slug": "pub-bias-suite",
+  "author": "Mahmood Ahmad",
+  "date": "2026-03-26",
+  "body": "How can meta-analysts assess publication bias using multiple complementary methods within a single integrated environment? PubBias Suite runs 12 detection and adjustment methods simultaneously, including Egger regression, Begg rank correlation, trim-and-fill, PET-PEESE, three-parameter selection modeling, p-curve, p-uniform star, WAAP-WLS, and limit meta-analysis, alongside three funnel plot variants. Each method uses the same dataset with traffic-light verdicts indicating whether bias is detected, enabling triangulation across regression tests, selection models, and nonparametric corrections. Validation across 25 Selenium tests confirmed correct execution for all 12 methods and 3 funnel types using the Turner 2008 antidepressant SMD dataset comprising 47 studies with 95% CI validation. Individual implementations were cross-validated against R metafor, meta, and puniform packages with results matching within documented tolerances. The tool enables multi-method assessment reducing reliance on any single diagnostic when evaluating evidence reliability. Most methods have limited power below approximately 10 studies, and results should be interpreted cautiously in small meta-analyses where detection is inherently unreliable.",
+  "word_count": 156,
+  "sentence_count": 7,
+  "sentences": [
+    {
+      "role": "Question",
+      "text": "How can meta-analysts assess publication bias using multiple complementary methods within a single integrated environment?"
+    },
+    {
+      "role": "Dataset",
+      "text": "PubBias Suite runs 12 detection and adjustment methods simultaneously, including Egger regression, Begg rank correlation, trim-and-fill, PET-PEESE, three-parameter selection modeling, p-curve, p-uniform star, WAAP-WLS, and limit meta-analysis, alongside three funnel plot variants."
+    },
+    {
+      "role": "Method",
+      "text": "Each method uses the same dataset with traffic-light verdicts indicating whether bias is detected, enabling triangulation across regression tests, selection models, and nonparametric corrections."
+    },
+    {
+      "role": "Primary result",
+      "text": "Validation across 25 Selenium tests confirmed correct execution for all 12 methods and 3 funnel types using the Turner 2008 antidepressant SMD dataset comprising 47 studies with 95% CI validation."
+    },
+    {
+      "role": "Robustness",
+      "text": "Individual implementations were cross-validated against R metafor, meta, and puniform packages with results matching within documented tolerances."
+    },
+    {
+      "role": "Interpretation",
+      "text": "The tool enables multi-method assessment reducing reliance on any single diagnostic when evaluating evidence reliability."
+    },
+    {
+      "role": "Boundary",
+      "text": "Most methods have limited power below approximately 10 studies, and results should be interpreted cautiously in small meta-analyses where detection is inherently unreliable."
+    }
+  ],
+  "notes": {
+    "app": "PubBias Suite v1.0",
+    "data": "12 bias methods + 3 funnel plots",
+    "code": "https://github.com/mahmood726-cyber/pubbiassuite",
+    "doi": "",
+    "version": "1.0",
+    "date": "2026-03-26",
+    "validation": "DRAFT"
+  },
+  "type": "methods",
+  "primary_estimand": "Bias-adjusted pooled effect estimates",
+  "validation": {
+    "status": "pass",
+    "checks": [
+      {
+        "name": "single paragraph",
+        "ok": true,
+        "detail": "Body must not contain blank-line paragraph breaks."
+      },
+      {
+        "name": "sentence count",
+        "ok": true,
+        "detail": "Found 7 sentences."
+      },
+      {
+        "name": "word count",
+        "ok": true,
+        "detail": "Found 156 words."
+      },
+      {
+        "name": "no headings",
+        "ok": true,
+        "detail": "No markdown headings allowed in body."
+      },
+      {
+        "name": "no links",
+        "ok": true,
+        "detail": "No links or DOI links allowed in body."
+      },
+      {
+        "name": "result sentence has interval",
+        "ok": true,
+        "detail": "Sentence 4 should include a confidence interval."
+      },
+      {
+        "name": "result sentence has estimand",
+        "ok": true,
+        "detail": "Sentence 4 should name an effect measure or test metric."
+      },
+      {
+        "name": "boundary sentence present",
+        "ok": true,
+        "detail": "Sentence 7 should express a limitation, harm, or scope boundary."
+      }
+    ]
+  },
+  "schema": "e156-v0.2"
+}
