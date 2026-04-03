@@ -7,9 +7,10 @@ example dataset loading, full analysis workflow, funnel plots,
 report generation, and export functions.
 """
 import sys, io, os, unittest, time, math, json
-if os.environ.get('PYTHONIOENCODING') is None and hasattr(sys.stdout, 'buffer'):
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+if hasattr(sys.stdout, 'reconfigure'):
     try:
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     except Exception:
         pass
 from selenium import webdriver
@@ -99,6 +100,18 @@ class TestPubBiasSuite(unittest.TestCase):
     def js(self, script):
         return self.drv.execute_script(script)
 
+    def click(self, element_id):
+        """Click via JS to avoid ElementNotInteractableException in headless."""
+        self.drv.execute_script(f"document.getElementById('{element_id}').click();")
+
+    def get_text(self, element_id):
+        """Get text content via JS."""
+        return self.drv.execute_script(f"return document.getElementById('{element_id}').textContent;")
+
+    def get_html(self, element_id):
+        """Get innerHTML via JS."""
+        return self.drv.execute_script(f"return document.getElementById('{element_id}').innerHTML;")
+
     def reload_app(self):
         self.drv.get(HTML)
         time.sleep(1)
@@ -107,9 +120,9 @@ class TestPubBiasSuite(unittest.TestCase):
     def _load_bcg_and_run(self):
         """Helper: load BCG data and run full analysis"""
         self.reload_app()
-        self.drv.find_element(By.ID, 'btnBCG').click()
+        self.click('btnBCG')
         time.sleep(0.5)
-        self.drv.find_element(By.ID, 'btnRunAll').click()
+        self.click('btnRunAll')
         time.sleep(2)
 
     # =================================================================
@@ -216,7 +229,7 @@ class TestPubBiasSuite(unittest.TestCase):
     def test_12_load_BCG_dataset(self):
         """Load BCG data: 13 studies, logRR effect type"""
         self.reload_app()
-        self.drv.find_element(By.ID, 'btnBCG').click()
+        self.click('btnBCG')
         time.sleep(0.5)
         count = self.js("return STATE.studies.length;")
         self.assertEqual(count, 13)
@@ -226,7 +239,7 @@ class TestPubBiasSuite(unittest.TestCase):
     def test_13_load_antidep_dataset(self):
         """Load Antidepressants data: 47 studies, SMD effect type"""
         self.reload_app()
-        self.drv.find_element(By.ID, 'btnAntidep').click()
+        self.click('btnAntidep')
         time.sleep(0.5)
         count = self.js("return STATE.studies.length;")
         self.assertEqual(count, 47)
@@ -461,7 +474,7 @@ class TestPubBiasSuite(unittest.TestCase):
         """Dark mode toggles data-theme attribute"""
         self.reload_app()
         initial = self.js("return document.documentElement.getAttribute('data-theme');")
-        self.drv.find_element(By.ID, 'btnDarkMode').click()
+        self.click('btnDarkMode')
         time.sleep(0.3)
         toggled = self.js("return document.documentElement.getAttribute('data-theme');")
         self.assertNotEqual(initial, toggled)
@@ -474,32 +487,30 @@ class TestPubBiasSuite(unittest.TestCase):
         """Standard funnel plot renders SVG after analysis"""
         self._load_bcg_and_run()
         # Switch to funnel tab
-        self.drv.find_element(By.ID, 'tab-funnel').click()
+        self.click('tab-funnel')
         time.sleep(0.5)
-        svg_html = self.drv.find_element(By.ID, 'funnelArea').get_attribute('innerHTML')
+        svg_html = self.get_html('funnelArea')
         self.assertIn('<svg', svg_html.lower(), "Should contain SVG")
 
     def test_29_funnel_plot_contour(self):
         """Contour-enhanced funnel plot renders"""
         self._load_bcg_and_run()
-        self.drv.find_element(By.ID, 'tab-funnel').click()
+        self.click('tab-funnel')
         time.sleep(0.3)
         # Click contour button
-        contour_btn = self.drv.find_element(By.CSS_SELECTOR, '[data-funnel="contour"]')
-        contour_btn.click()
+        self.js("document.querySelector('[data-funnel=\"contour\"]').click();")
         time.sleep(0.5)
-        svg_html = self.drv.find_element(By.ID, 'funnelArea').get_attribute('innerHTML')
+        svg_html = self.get_html('funnelArea')
         self.assertIn('<svg', svg_html.lower())
 
     def test_30_funnel_plot_sunset(self):
         """Sunset funnel plot renders"""
         self._load_bcg_and_run()
-        self.drv.find_element(By.ID, 'tab-funnel').click()
+        self.click('tab-funnel')
         time.sleep(0.3)
-        sunset_btn = self.drv.find_element(By.CSS_SELECTOR, '[data-funnel="sunset"]')
-        sunset_btn.click()
+        self.js("document.querySelector('[data-funnel=\"sunset\"]').click();")
         time.sleep(0.5)
-        svg_html = self.drv.find_element(By.ID, 'funnelArea').get_attribute('innerHTML')
+        svg_html = self.get_html('funnelArea')
         self.assertIn('<svg', svg_html.lower())
 
     # =================================================================
@@ -509,18 +520,18 @@ class TestPubBiasSuite(unittest.TestCase):
     def test_31_report_methods_text(self):
         """Report tab shows publication bias methods description"""
         self._load_bcg_and_run()
-        self.drv.find_element(By.ID, 'tab-report').click()
+        self.click('tab-report')
         time.sleep(0.3)
-        methods_text = self.drv.find_element(By.ID, 'methodsText').text
+        methods_text = self.get_text('methodsText')
         self.assertIn('publication bias', methods_text.lower())
         self.assertIn('Egger', methods_text)
 
     def test_32_report_R_code(self):
         """Report tab shows R code with metafor commands"""
         self._load_bcg_and_run()
-        self.drv.find_element(By.ID, 'tab-report').click()
+        self.click('tab-report')
         time.sleep(0.3)
-        r_code = self.drv.find_element(By.ID, 'rCode').text
+        r_code = self.get_text('rCode')
         self.assertIn('library(metafor)', r_code)
         self.assertIn('regtest', r_code)
         self.assertIn('trimfill', r_code)
@@ -532,9 +543,9 @@ class TestPubBiasSuite(unittest.TestCase):
     def test_33_traffic_light_summary(self):
         """Traffic light summary generated with method names"""
         self._load_bcg_and_run()
-        self.drv.find_element(By.ID, 'tab-sensitivity').click()
+        self.click('tab-sensitivity')
         time.sleep(0.3)
-        traffic = self.drv.find_element(By.ID, 'trafficSummary').text
+        traffic = self.get_text('trafficSummary')
         self.assertIn('Egger', traffic)
 
     # =================================================================
@@ -544,9 +555,9 @@ class TestPubBiasSuite(unittest.TestCase):
     def test_34_verdict_text(self):
         """Verdict text contains assessment words"""
         self._load_bcg_and_run()
-        self.drv.find_element(By.ID, 'tab-sensitivity').click()
+        self.click('tab-sensitivity')
         time.sleep(0.3)
-        verdict = self.drv.find_element(By.ID, 'verdictText').text
+        verdict = self.get_text('verdictText')
         self.assertTrue(len(verdict) > 20, "Verdict should be a meaningful sentence")
         # Should mention the pooled estimate or bias
         lv = verdict.lower()
@@ -560,8 +571,8 @@ class TestPubBiasSuite(unittest.TestCase):
         """CSV paste parses custom data into STATE"""
         self.reload_app()
         csv_data = "Study,y,se\nA,0.5,0.1\nB,-0.3,0.2\nC,0.8,0.15\nD,-0.1,0.12"
-        self.js("document.getElementById('csvInput').value = arguments[0];", csv_data)
-        self.drv.find_element(By.ID, 'btnParseCsv').click()
+        self.drv.execute_script("document.getElementById('csvInput').value = arguments[0];", csv_data)
+        self.click('btnParseCsv')
         time.sleep(0.5)
         count = self.js("return STATE.studies.length;")
         self.assertEqual(count, 4)
@@ -574,7 +585,7 @@ class TestPubBiasSuite(unittest.TestCase):
         """Add row increases study count"""
         self.reload_app()
         before = self.js("return STATE.studies.length;")
-        self.drv.find_element(By.ID, 'btnAddRow').click()
+        self.click('btnAddRow')
         time.sleep(0.3)
         after = self.js("return STATE.studies.length;")
         self.assertEqual(after, before + 1)
@@ -583,7 +594,7 @@ class TestPubBiasSuite(unittest.TestCase):
         """Delete last row decreases study count"""
         self.reload_app()
         before = self.js("return STATE.studies.length;")
-        self.drv.find_element(By.ID, 'btnDeleteLast').click()
+        self.click('btnDeleteLast')
         time.sleep(0.3)
         after = self.js("return STATE.studies.length;")
         self.assertEqual(after, before - 1)
@@ -595,10 +606,10 @@ class TestPubBiasSuite(unittest.TestCase):
     def test_38_clear_data(self):
         """Clear button empties all studies"""
         self.reload_app()
-        self.drv.find_element(By.ID, 'btnBCG').click()
+        self.click('btnBCG')
         time.sleep(0.3)
         self.assertEqual(self.js("return STATE.studies.length;"), 13)
-        self.drv.find_element(By.ID, 'btnClear').click()
+        self.click('btnClear')
         time.sleep(0.3)
         self.assertEqual(self.js("return STATE.studies.length;"), 0)
 
@@ -609,7 +620,7 @@ class TestPubBiasSuite(unittest.TestCase):
     def test_39_minimum_3_studies_required(self):
         """Running analysis with <3 studies shows alert"""
         self.reload_app()
-        self.drv.find_element(By.ID, 'btnClear').click()
+        self.click('btnClear')
         time.sleep(0.3)
         # Add only 2 studies
         self.js("""
@@ -620,7 +631,7 @@ class TestPubBiasSuite(unittest.TestCase):
         results_before = self.js("return STATE.results;")
         # Try to run (will attempt alert in headless)
         try:
-            self.drv.find_element(By.ID, 'btnRunAll').click()
+            self.click('btnRunAll')
             time.sleep(0.5)
             # Accept alert if present
             try:
@@ -640,9 +651,9 @@ class TestPubBiasSuite(unittest.TestCase):
     def test_40_antidep_full_analysis(self):
         """Full analysis on 47-study antidepressant dataset"""
         self.reload_app()
-        self.drv.find_element(By.ID, 'btnAntidep').click()
+        self.click('btnAntidep')
         time.sleep(0.5)
-        self.drv.find_element(By.ID, 'btnRunAll').click()
+        self.click('btnRunAll')
         time.sleep(3)
         has_results = self.js("return STATE.results !== null;")
         self.assertTrue(has_results)
@@ -662,9 +673,9 @@ class TestPubBiasSuite(unittest.TestCase):
     def test_42_study_count_badge(self):
         """Study count badge updates after loading data"""
         self.reload_app()
-        self.drv.find_element(By.ID, 'btnBCG').click()
+        self.click('btnBCG')
         time.sleep(0.5)
-        badge = self.drv.find_element(By.ID, 'studyCountBadge').text
+        badge = self.get_text('studyCountBadge')
         self.assertIn('13', badge)
 
     # =================================================================
@@ -674,9 +685,9 @@ class TestPubBiasSuite(unittest.TestCase):
     def test_43_comparison_chart_rendered(self):
         """Comparison chart has SVG after analysis"""
         self._load_bcg_and_run()
-        self.drv.find_element(By.ID, 'tab-sensitivity').click()
+        self.click('tab-sensitivity')
         time.sleep(0.3)
-        chart_html = self.drv.find_element(By.ID, 'comparisonChart').get_attribute('innerHTML')
+        chart_html = self.get_html('comparisonChart')
         self.assertIn('<svg', chart_html.lower())
 
 
