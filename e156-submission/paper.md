@@ -1,6 +1,6 @@
 Mahmood Ahmad
 Tahir Heart Institute
-author@example.com
+mahmood.ahmad2@nhs.net
 
 PubBias Suite: Comprehensive Publication Bias Assessment with 12 Methods and 3 Funnel Plot Variants
 
