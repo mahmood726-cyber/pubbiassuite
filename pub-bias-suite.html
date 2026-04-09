@@ -509,6 +509,158 @@ function lnGamma(x) {
   return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
 }
 
+/* ── _core helpers from meta-stats-core (inlined for single-file use) ── */
+
+/** Log-gamma via Lanczos approximation (_core) */
+function lnGamma_core(x) {
+  var g = 7;
+  var c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+           771.32342877765313, -176.61502916214059, 12.507343278686905,
+           -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - lnGamma_core(1 - x);
+  x -= 1;
+  var a = c[0];
+  var t = x + g + 0.5;
+  for (var i = 1; i < c.length; i++) a += c[i] / (x + i);
+  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+}
+
+/** Regularized incomplete beta via continued fraction (_core) */
+function betaCF_core(x, a, b) {
+  var f = 1, c2 = 1, d = 1 - (a+b)*x/(a+1);
+  if (Math.abs(d) < 1e-30) d = 1e-30;
+  d = 1/d; f = d;
+  for (var m = 1; m <= 200; m++) {
+    var num = m * (b - m) * x / ((a + 2*m - 1) * (a + 2*m));
+    d = 1 + num * d; if (Math.abs(d) < 1e-30) d = 1e-30; d = 1/d;
+    c2 = 1 + num / c2; if (Math.abs(c2) < 1e-30) c2 = 1e-30;
+    f *= d * c2;
+    num = -(a + m) * (a + b + m) * x / ((a + 2*m) * (a + 2*m + 1));
+    d = 1 + num * d; if (Math.abs(d) < 1e-30) d = 1e-30; d = 1/d;
+    c2 = 1 + num / c2; if (Math.abs(c2) < 1e-30) c2 = 1e-30;
+    var delta = d * c2;
+    f *= delta;
+    if (Math.abs(delta - 1) < 1e-12) break;
+  }
+  return f;
+}
+
+function regBetaI_core(x, a, b) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  var lnBeta = lnGamma_core(a) + lnGamma_core(b) - lnGamma_core(a + b);
+  var front = Math.exp(Math.log(x)*a + Math.log(1-x)*b - lnBeta) / a;
+  return front * betaCF_core(x, a, b);
+}
+
+/** Regularized incomplete gamma (_core) */
+function regGammaP_core(a, x) {
+  if (x < 0) return 0;
+  if (x === 0) return 0;
+  if (x > a + 1) return 1 - regGammaQ_core(a, x);
+  var sum = 1/a, term = 1/a;
+  for (var n = 1; n < 300; n++) {
+    term *= x / (a + n);
+    sum += term;
+    if (Math.abs(term) < 1e-14 * Math.abs(sum)) break;
+  }
+  return Math.exp(-x + a * Math.log(x) - lnGamma_core(a)) * sum;
+}
+
+function regGammaQ_core(a, x) {
+  var f = x - a + 1 + 1e-30;
+  var c2 = f, d = 0, delta;
+  for (var m = 1; m <= 300; m++) {
+    var an1 = m * (a - m);
+    var an2 = x - a + 2*m + 1;
+    d = an2 + an1 * d; if (Math.abs(d) < 1e-30) d = 1e-30; d = 1/d;
+    c2 = an2 + an1 / c2; if (Math.abs(c2) < 1e-30) c2 = 1e-30;
+    delta = c2 * d; f *= delta;
+    if (Math.abs(delta - 1) < 1e-12) break;
+  }
+  return Math.exp(-x + a * Math.log(x) - lnGamma_core(a)) / f;
+}
+
+/** t-distribution PDF and CDF (_core) */
+function tPDF_core(t, df) {
+  return Math.exp(lnGamma_core((df+1)/2) - lnGamma_core(df/2) - 0.5*Math.log(df*Math.PI)
+         - ((df+1)/2) * Math.log(1 + t*t/df));
+}
+
+function tCDF_core(t, df) {
+  var x = df / (df + t * t);
+  var ib = regBetaI_core(x, df/2, 0.5);
+  return t < 0 ? 0.5 * ib : 1 - 0.5 * ib;
+}
+
+/** Normal quantile (_core) — Beasley-Springer-Moro */
+function normalQuantile_core(p) {
+  if (p <= 0) return -Infinity;
+  if (p >= 1) return Infinity;
+  if (p === 0.5) return 0;
+  var a = [-3.969683028665376e1, 2.209460984245205e2, -2.759285104469687e2,
+           1.383577518672690e2, -3.066479806614716e1, 2.506628277459239e0];
+  var b = [-5.447609879822406e1, 1.615858368580409e2, -1.556989798598866e2,
+           6.680131188771972e1, -1.328068155288572e1];
+  var c = [-7.784894002430293e-3, -3.223964580411365e-1, -2.400758277161838e0,
+           -2.549732539343734e0, 4.374664141464968e0, 2.938163982698783e0];
+  var d = [7.784695709041462e-3, 3.224671290700398e-1, 2.445134137142996e0, 3.754408661907416e0];
+  var pLow = 0.02425, pHigh = 1 - pLow;
+  var q, r;
+  if (p < pLow) {
+    q = Math.sqrt(-2 * Math.log(p));
+    return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) /
+           ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  } else if (p <= pHigh) {
+    q = p - 0.5; r = q * q;
+    return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q /
+           (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+  } else {
+    q = Math.sqrt(-2 * Math.log(1 - p));
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) /
+            ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  }
+}
+
+/** t-distribution quantile — Cornish-Fisher + Newton-Raphson (_core) */
+function tQuantile_core(p, df) {
+  if (df <= 0) return NaN;
+  if (df === 1) return Math.tan(Math.PI * (p - 0.5));
+  if (df === 2) return (2 * p - 1) / Math.sqrt(2 * p * (1 - p));
+  var zp = normalQuantile_core(p);
+  var g1 = (zp * zp * zp + zp) / (4 * df);
+  var g2 = (5 * Math.pow(zp, 5) + 16 * zp * zp * zp + 3 * zp) / (96 * df * df);
+  var g3 = (3 * Math.pow(zp, 7) + 19 * Math.pow(zp, 5) + 17 * zp * zp * zp - 15 * zp) / (384 * Math.pow(df, 3));
+  var t = zp + g1 + g2 + g3;
+  for (var i = 0; i < 3; i++) {
+    var cdf = tCDF_core(t, df);
+    var pdf = tPDF_core(t, df);
+    if (pdf < 1e-15) break;
+    t -= (cdf - p) / pdf;
+  }
+  return t;
+}
+
+/** Chi-squared CDF and quantile (_core) */
+function chi2CDF_core(x, df) {
+  if (x <= 0) return 0;
+  return regGammaP_core(df / 2, x / 2);
+}
+
+function chi2Quantile_core(p, df) {
+  var x = df * Math.pow(1 - 2/(9*df) + normalQuantile_core(p) * Math.sqrt(2/(9*df)), 3);
+  if (x < 0.01) x = 0.01;
+  for (var i = 0; i < 20; i++) {
+    var cdf = chi2CDF_core(x, df);
+    var pdf = Math.exp((df/2-1)*Math.log(x/2) - x/2 - lnGamma_core(df/2) - Math.log(2));
+    if (pdf < 1e-15) break;
+    var dx = (cdf - p) / pdf;
+    x = Math.max(1e-10, x - dx);
+    if (Math.abs(dx) < 1e-10) break;
+  }
+  return x;
+}
+
 /** Two-sided p-value from t statistic and df */
 function tPvalue(t, df) {
   var p = tCDF(Math.abs(t), df);
@@ -534,25 +686,82 @@ function fixedEffectMA(y, se) {
   return { mu: mu, se: seMu, w: w };
 }
 
-/** Random-effects meta-analysis (DerSimonian-Laird) */
+/** REML tau2 estimator (Fisher scoring) */
+function remlTau2(y, se) {
+  var k = y.length;
+  var vi = se.map(function(s) { return s * s; });
+  // DL initial estimate
+  var w = vi.map(function(v) { return 1/v; });
+  var sumW = w.reduce(function(a,b) { return a+b; }, 0);
+  var theta0 = w.reduce(function(a,b,i) { return a + b*y[i]; }, 0) / sumW;
+  var Q = w.reduce(function(a,b,i) { return a + b * Math.pow(y[i]-theta0, 2); }, 0);
+  var sumW2 = w.reduce(function(a,ww) { return a + ww*ww; }, 0);
+  var C = sumW - sumW2/sumW;
+  var tau2 = Math.max(0, (Q - (k-1)) / C);
+  // Fisher scoring iterations
+  for (var iter = 0; iter < 100; iter++) {
+    var ws = vi.map(function(v) { return 1/(v + tau2); });
+    var sW = ws.reduce(function(a,b) { return a+b; }, 0);
+    var th = ws.reduce(function(a,b,i) { return a + b*y[i]; }, 0) / sW;
+    var sW2 = ws.reduce(function(a,ww) { return a + ww*ww; }, 0);
+    var sW3 = ws.reduce(function(a,ww) { return a + Math.pow(ww,3); }, 0);
+    var sW2r2 = ws.reduce(function(a,ww,i) { return a + ww*ww*Math.pow(y[i]-th,2); }, 0);
+    var score = -0.5*sW + 0.5*sW2/sW + 0.5*sW2r2;
+    var info = 0.5*(sW2 - 2*sW3/sW + sW2*sW2/(sW*sW));
+    if (info < 1e-15) break;
+    var tau2New = Math.max(0, tau2 + score/info);
+    if (Math.abs(tau2New - tau2) < 1e-10) { tau2 = tau2New; break; }
+    tau2 = tau2New;
+  }
+  return tau2;
+}
+
+/** Random-effects meta-analysis (REML + HKSJ CI + Prediction Interval) */
 function randomEffectsMA(y, se) {
   var k = y.length;
-  var fe = fixedEffectMA(y, se);
-  var w = fe.w;
-  var sumW = w.reduce(function(a,b) { return a+b; }, 0);
-  var Q = 0;
-  for (var i = 0; i < k; i++) {
-    Q += w[i] * Math.pow(y[i] - fe.mu, 2);
-  }
-  var sumW2 = w.reduce(function(a,b) { return a + b*b; }, 0);
-  // NOTE: C = sumW - sumW2/sumW (used for tau2 denominator, not a variable reuse)
-  var Cval = sumW - sumW2 / sumW;
-  var tau2 = Math.max(0, (Q - (k - 1)) / Cval);
-  var wStar = se.map(function(s) { return 1 / (s * s + tau2); });
-  var muStar = weightedMean(y, wStar);
+  var vi = se.map(function(s) { return s * s; });
+  var tau2 = remlTau2(y, se);
+  var wStar = vi.map(function(v) { return 1/(v + tau2); });
   var sumWStar = wStar.reduce(function(a,b) { return a+b; }, 0);
-  var seMuStar = Math.sqrt(1 / sumWStar);
-  return { mu: muStar, se: seMuStar, tau2: tau2, Q: Q, w: wStar, I2: Math.max(0, (Q - (k-1)) / Q) };
+  var muStar = wStar.reduce(function(a,b,i) { return a + b*y[i]; }, 0) / sumWStar;
+  var seMuStar = Math.sqrt(1/sumWStar);
+  // Cochran's Q from fixed-effect weights
+  var w0 = vi.map(function(v) { return 1/v; });
+  var sumW0 = w0.reduce(function(a,b) { return a+b; }, 0);
+  var mu0 = w0.reduce(function(a,b,i) { return a + b*y[i]; }, 0) / sumW0;
+  var Q = w0.reduce(function(a,b,i) { return a + b * Math.pow(y[i]-mu0, 2); }, 0);
+  var I2 = Q > 0 ? Math.max(0, (Q - (k-1)) / Q) : 0;
+  // HKSJ CI: t_{k-1}, with floor correction
+  var Qs = wStar.reduce(function(a,b,i) { return a + b * Math.pow(y[i]-muStar, 2); }, 0);
+  var hksjVar = Qs / ((k-1) * sumWStar);
+  var waldVar = 1 / sumWStar;
+  hksjVar = Math.max(hksjVar, waldVar); // floor: prevent HKSJ narrowing below Wald when Q* < k-1
+  var seHKSJ = Math.sqrt(hksjVar);
+  var tcrit = Math.abs(tQuantile_core(0.025, k - 1));
+  var ci_hksj = [muStar - tcrit * seHKSJ, muStar + tcrit * seHKSJ];
+  // Wald CI (z-based) — kept for comparison
+  var ci_wald = [muStar - 1.959964 * seMuStar, muStar + 1.959964 * seMuStar];
+  // Prediction interval (t_{k-2}, undefined for k<3)
+  var pi = [NaN, NaN];
+  if (k >= 3) {
+    var tcritPI = Math.abs(tQuantile_core(0.025, k - 2));
+    var piSe = Math.sqrt(tau2 + seMuStar * seMuStar);
+    pi = [muStar - tcritPI * piSe, muStar + tcritPI * piSe];
+  }
+  // Q-profile CI for I^2 (Viechtbauer 2007)
+  var I2_lower = 0, I2_upper = 100;
+  if (k >= 3) {
+    var Q_upper = chi2Quantile_core(0.025, k-1);
+    var Q_lower = chi2Quantile_core(0.975, k-1);
+    I2_lower = Math.max(0, 100 * (Q - Q_lower) / Q);
+    I2_upper = Math.min(100, 100 * (Q - Q_upper) / Q);
+    if (I2_upper < 0) I2_upper = 0;
+  }
+  return {
+    mu: muStar, se: seMuStar, tau2: tau2, Q: Q, w: wStar, I2: I2,
+    ci_hksj: ci_hksj, ci_wald: ci_wald, pi: pi, method: 'REML',
+    I2_lower: I2_lower, I2_upper: I2_upper
+  };
 }
 
 /** Kendall's tau-b */
@@ -842,42 +1051,35 @@ function runAllTests(y, se) {
   return results;
 }
 
-/* ── 1. Egger's regression ── */
+/* ── 1. Egger's regression (radial formulation) ── */
 function runEgger(y, se, w) {
   var k = y.length;
-  // Standardized effect: z_i = y_i / se_i
-  // Precision: prec_i = 1/se_i
-  // Regress z on prec using OLS (equivalent to WLS of y on 1/se with weights 1/v)
-  var z = [], prec = [];
-  for (var i = 0; i < k; i++) {
-    z.push(y[i] / se[i]);
-    prec.push(1 / se[i]);
-  }
-  // OLS regression z_i = intercept + slope * prec_i
-  var n = k;
-  var sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-  for (var i = 0; i < n; i++) {
-    sumX += prec[i]; sumY += z[i];
-    sumXY += prec[i] * z[i]; sumX2 += prec[i] * prec[i];
-  }
-  var xbar = sumX / n, ybar = sumY / n;
-  var slope = (sumXY - n * xbar * ybar) / (sumX2 - n * xbar * xbar);
-  var intercept = ybar - slope * xbar;
-  // Residual SE
-  var ssr = 0;
-  for (var i = 0; i < n; i++) {
-    var r = z[i] - intercept - slope * prec[i];
-    ssr += r * r;
-  }
-  var df = n - 2;
-  var s2 = ssr / df;
-  var seIntercept = Math.sqrt(s2 * (1/n + xbar*xbar / (sumX2 - n*xbar*xbar)));
-  var tStat = intercept / seIntercept;
-  var pVal = tPvalue(tStat, df);
-
+  // Radial Egger: regress y_i/se_i on 1/se_i, weighted by 1/v_i
+  var v = se.map(function(s) { return s * s; });
+  var xVals = se.map(function(s) { return 1/s; });       // precision
+  var yVals = y.map(function(yi,i) { return yi/se[i]; }); // standardised effect
+  var wVals = v.map(function(vi) { return 1/vi; });
+  var reg = wlsRegression(yVals, xVals, wVals);
+  var lowPowerWarning = k < 10;
   return {
-    intercept: intercept, seIntercept: seIntercept,
-    slope: slope, t: tStat, p: pVal, df: df
+    intercept: reg.intercept, seIntercept: reg.seIntercept,
+    slope: reg.slope, t: reg.tIntercept, p: reg.pIntercept, df: reg.df,
+    lowPowerWarning: lowPowerWarning,
+    method: 'radialEgger'
+  };
+}
+
+/* ── 1b. Peters' test (for binary outcomes, regress on 1/n) ── */
+function runPeters(y, se, ni) {
+  var v = se.map(function(s) { return s * s; });
+  var xVals = ni.map(function(n) { return 1/n; });
+  var wVals = v.map(function(vi) { return 1/vi; });
+  var reg = wlsRegression(y, xVals, wVals);
+  return {
+    intercept: reg.intercept, slope: reg.slope,
+    seIntercept: reg.seIntercept,
+    t: reg.tIntercept, p: reg.pIntercept, df: reg.df,
+    method: 'Peters'
   };
 }
 
@@ -1595,20 +1797,35 @@ function renderTests() {
 
   var effectLabel = STATE.effectType;
 
-  // Naive pooled
+  // Pooled estimates with REML + HKSJ + PI
+  var waldCIstr = '[' + fmt(r.re.ci_wald[0]) + ', ' + fmt(r.re.ci_wald[1]) + ']';
+  var hksjCIstr = '[' + fmt(r.re.ci_hksj[0]) + ', ' + fmt(r.re.ci_hksj[1]) + ']';
+  var piStr = (isNaN(r.re.pi[0])) ? 'N/A (k < 3)' : '[' + fmt(r.re.pi[0]) + ', ' + fmt(r.re.pi[1]) + ']';
+  var i2CIstr = '[' + fmt(r.re.I2_lower, 1) + '%, ' + fmt(r.re.I2_upper, 1) + '%]';
   html += '<div class="card mb-16">' +
     '<h3>Pooled Estimates (Reference)</h3>' +
     '<div class="stat-row">' +
     '<span><span class="stat-label">Fixed-effect:</span> ' + fmt(r.fe.mu) + ' (SE ' + fmt(r.fe.se) + ')</span>' +
-    '<span><span class="stat-label">Random-effects (DL):</span> ' + fmt(r.re.mu) + ' (SE ' + fmt(r.re.se) + ')</span>' +
+    '<span><span class="stat-label">Random-effects (REML):</span> ' + fmt(r.re.mu) + ' (SE ' + fmt(r.re.se) + ')</span>' +
     '<span><span class="stat-label">tau2:</span> ' + fmt(r.re.tau2) + '</span>' +
-    '<span><span class="stat-label">I2:</span> ' + fmt(r.re.I2 * 100, 1) + '%</span>' +
+    '<span><span class="stat-label">I2:</span> ' + fmt(r.re.I2 * 100, 1) + '% ' + i2CIstr + '</span>' +
+    '<span><span class="stat-label">Q:</span> ' + fmt(r.re.Q, 2) + ' (df=' + (r.k - 1) + ')</span>' +
     '<span><span class="stat-label">k:</span> ' + r.k + '</span>' +
+    '</div>' +
+    '<div class="stat-row" style="margin-top:8px">' +
+    '<span><span class="stat-label">HKSJ 95% CI:</span> ' + hksjCIstr + '</span>' +
+    '<span><span class="stat-label">Wald (z-based) 95% CI:</span> ' + waldCIstr + '</span>' +
+    '<span><span class="stat-label">95% Prediction Interval:</span> ' + piStr + '</span>' +
     '</div></div>';
 
-  // 1. Egger
-  html += methodCard('1. Egger\'s Regression Test',
-    'Regresses standardized effect on precision to detect funnel asymmetry (Egger et al., 1997).',
+  // 1. Egger (radial)
+  var eggerInterp = interpFromP(r.egger.p, 'funnel asymmetry', 'Egger\'s test (radial)');
+  if (r.egger.lowPowerWarning) {
+    eggerInterp.text += ' Note: k < 10 — Egger\'s test has low power. Consider Peters\' test for binary outcomes.';
+    if (eggerInterp.level === 'green') eggerInterp.level = 'amber';
+  }
+  html += methodCard('1. Egger\'s Regression Test (Radial)',
+    'Radial formulation: regresses y/SE on 1/SE, weighted by 1/variance (Egger et al., 1997; radial per Sterne & Egger, 2005).',
     [
       ['Intercept', fmt(r.egger.intercept)],
       ['SE(intercept)', fmt(r.egger.seIntercept)],
@@ -1616,7 +1833,7 @@ function renderTests() {
       ['p-value', fmtP(r.egger.p)],
       ['df', r.egger.df]
     ],
-    interpFromP(r.egger.p, 'funnel asymmetry', 'Egger\'s test')
+    eggerInterp
   );
 
   // 2. Begg
@@ -1630,9 +1847,9 @@ function renderTests() {
     interpFromP(r.begg.p, 'rank correlation', 'Begg\'s test')
   );
 
-  // 3. Trim-and-fill L0
-  html += methodCard('3. Trim-and-Fill (L0 estimator)',
-    'Duval-Tweedie method with L0 estimator. Imputes "missing" studies to symmetrize funnel (Duval & Tweedie, 2000).',
+  // 3. Trim-and-fill L0 (sensitivity analysis only)
+  html += methodCard('3. Trim-and-Fill (L0 estimator) [Sensitivity Analysis]',
+    'Duval-Tweedie method with L0 estimator. Imputes "missing" studies to symmetrize funnel (Duval & Tweedie, 2000). NOTE: Trim-and-fill is a sensitivity analysis — never the primary result.',
     [
       ['Imputed studies (k0)', r.trimfillL0.k0],
       ['Adjusted FE estimate', fmt(r.trimfillL0.adjMuFE)],
@@ -1645,9 +1862,9 @@ function renderTests() {
       : { text: 'No asymmetry detected; no studies imputed.', level: 'green' }
   );
 
-  // 4. Trim-and-fill R0
-  html += methodCard('4. Trim-and-Fill (R0 estimator)',
-    'Duval-Tweedie with R0 estimator (more conservative).',
+  // 4. Trim-and-fill R0 (sensitivity analysis only)
+  html += methodCard('4. Trim-and-Fill (R0 estimator) [Sensitivity Analysis]',
+    'Duval-Tweedie with R0 estimator (more conservative). NOTE: Sensitivity analysis only.',
     [
       ['Imputed studies (k0)', r.trimfillR0.k0],
       ['Adjusted FE estimate', fmt(r.trimfillR0.adjMuFE)],
@@ -1820,7 +2037,7 @@ function renderSensitivity() {
 
   // Collect all adjusted estimates
   var methods = [
-    { name: 'Naive RE (DL)', est: r.re.mu, se: r.re.se, color: '#6b7280' },
+    { name: 'Naive RE (REML)', est: r.re.mu, se: r.re.se, color: '#6b7280' },
     { name: 'Trim-Fill L0', est: r.trimfillL0.adjMuRE, se: r.trimfillL0.adjSeRE, color: '#2563eb' },
     { name: 'Trim-Fill R0', est: r.trimfillR0.adjMuRE, se: r.trimfillR0.adjSeRE, color: '#3b82f6' },
     { name: 'PET', est: r.pet.adjEstimate, se: r.pet.seAdj, color: '#8b5cf6' },
@@ -1929,7 +2146,7 @@ function renderSensitivity() {
 
   var verdict;
   if (redCount >= 3) {
-    verdict = 'Strong evidence of publication bias. Multiple methods indicate funnel asymmetry, selection effects, or inflated estimates. The naive pooled estimate (' + fmt(r.re.mu) + ') should be interpreted with caution. Bias-adjusted estimates range from ' + fmt(Math.min.apply(null, methods.filter(function(m){return m.est!=null&&isFinite(m.est)&&m.name!=='Naive RE (DL)';}).map(function(m){return m.est;}))) + ' to ' + fmt(Math.max.apply(null, methods.filter(function(m){return m.est!=null&&isFinite(m.est)&&m.name!=='Naive RE (DL)';}).map(function(m){return m.est;}))) + '.';
+    verdict = 'Strong evidence of publication bias. Multiple methods indicate funnel asymmetry, selection effects, or inflated estimates. The naive pooled estimate (' + fmt(r.re.mu) + ') should be interpreted with caution. Bias-adjusted estimates range from ' + fmt(Math.min.apply(null, methods.filter(function(m){return m.est!=null&&isFinite(m.est)&&m.name!=='Naive RE (REML)';}).map(function(m){return m.est;}))) + ' to ' + fmt(Math.max.apply(null, methods.filter(function(m){return m.est!=null&&isFinite(m.est)&&m.name!=='Naive RE (REML)';}).map(function(m){return m.est;}))) + '.';
   } else if (redCount >= 1 || amberCount >= 2) {
     verdict = 'Some evidence of publication bias. At least one method flags concern. The pooled estimate (' + fmt(r.re.mu) + ') may be somewhat inflated. Consider the range of adjusted estimates in the comparison chart.';
   } else {
@@ -1949,11 +2166,13 @@ function renderReport() {
   // Methods text
   var k = r.k;
   var methodsText = 'Publication bias was assessed using 12 complementary methods. ' +
+    'The pooled estimate was computed using REML with Hartung-Knapp-Sidik-Jonkman (HKSJ) confidence intervals ' +
+    '(t-distribution with k-1 df and floor correction) and 95% prediction intervals (t-distribution with k-2 df). ' +
     'Funnel plot asymmetry was evaluated visually using standard, contour-enhanced (Peters et al., 2008), ' +
     'and sunset (Schauer & Hedges, 2020) funnel plots. ' +
-    'Formal asymmetry testing was performed using Egger\'s regression test (Egger et al., 1997) and ' +
-    'Begg\'s rank correlation test (Begg & Mazumdar, 1994). ' +
-    'The trim-and-fill method (Duval & Tweedie, 2000) was applied using both L0 and R0 estimators. ' +
+    'Formal asymmetry testing was performed using the radial formulation of Egger\'s regression test ' +
+    '(Egger et al., 1997; Sterne & Egger, 2005) and Begg\'s rank correlation test (Begg & Mazumdar, 1994). ' +
+    'The trim-and-fill method (Duval & Tweedie, 2000) was applied as a sensitivity analysis using both L0 and R0 estimators. ' +
     'Regression-based bias correction used PET and PEESE (Stanley & Doucouliagos, 2014), applied ' +
     'conditionally as recommended (PET-PEESE). ' +
     'A 3-parameter selection model (3PSM; Vevea & Hedges, 1995) estimated the relative likelihood of ' +
@@ -1973,21 +2192,24 @@ function renderReport() {
     '# Data\n' +
     'yi <- c(' + STATE.studies.map(function(s){return s.y;}).join(', ') + ')\n' +
     'sei <- c(' + STATE.studies.map(function(s){return s.se;}).join(', ') + ')\n\n' +
-    '# Random-effects model\n' +
-    'res <- rma(yi, sei=sei, method="DL")\n' +
-    'summary(res)\n\n' +
+    '# Random-effects model (REML with HKSJ)\n' +
+    'res <- rma(yi, sei=sei, method="REML", test="knha")\n' +
+    'summary(res)\n' +
+    'predict(res)  # includes prediction interval\n\n' +
     '# Funnel plot\n' +
     'funnel(res)\n\n' +
-    '# Egger\'s test\n' +
+    '# Egger\'s test (radial formulation)\n' +
     'regtest(res, model="lm")\n\n' +
     '# Begg\'s test\n' +
     'ranktest(res)\n\n' +
-    '# Trim-and-fill\n' +
+    '# Trim-and-fill (sensitivity analysis only)\n' +
     'trimfill(res, estimator="L0")\n' +
     'trimfill(res, estimator="R0")\n\n' +
     '# PET-PEESE\n' +
     'pet <- rma(yi, sei=sei, mods=~sei, method="FE")\n' +
     'peese <- rma(yi, sei=sei, mods=~I(sei^2), method="FE")\n\n' +
+    '# Peters\' test (binary outcomes)\n' +
+    '# regtest(res, model="lm", predictor="ni")\n\n' +
     '# Selection model (3PSM)\n' +
     'selmodel(res, type="stepfun", steps=c(0.05))\n\n' +
     '# P-curve (use pcurve R package or webtool)\n' +
@@ -2006,8 +2228,11 @@ function exportCSV() {
   var r = STATE.results;
   if (!r) { alert('Run analysis first.'); return; }
   var lines = ['Method,Estimate,SE,p-value,Details'];
-  lines.push('Naive RE (DL),' + r.re.mu + ',' + r.re.se + ',,tau2=' + r.re.tau2);
-  lines.push('Egger intercept,' + r.egger.intercept + ',' + r.egger.seIntercept + ',' + r.egger.p + ',');
+  lines.push('Naive RE (REML),' + r.re.mu + ',' + r.re.se + ',,tau2=' + r.re.tau2 + ' I2=' + fmt(r.re.I2*100,1) + '%');
+  lines.push('HKSJ 95% CI,,,,lower=' + fmt(r.re.ci_hksj[0]) + ' upper=' + fmt(r.re.ci_hksj[1]));
+  lines.push('Wald 95% CI,,,,lower=' + fmt(r.re.ci_wald[0]) + ' upper=' + fmt(r.re.ci_wald[1]));
+  lines.push('Prediction Interval,,,,lower=' + fmt(r.re.pi[0]) + ' upper=' + fmt(r.re.pi[1]));
+  lines.push('Egger intercept (radial),' + r.egger.intercept + ',' + r.egger.seIntercept + ',' + r.egger.p + ',');
   lines.push('Begg tau,' + r.begg.tau + ',,' + r.begg.p + ',');
   lines.push('Trim-Fill L0,' + r.trimfillL0.adjMuRE + ',' + r.trimfillL0.adjSeRE + ',,k0=' + r.trimfillL0.k0);
   lines.push('Trim-Fill R0,' + r.trimfillR0.adjMuRE + ',' + r.trimfillR0.adjSeRE + ',,k0=' + r.trimfillR0.k0);
@@ -2060,8 +2285,19 @@ function exportMAIF() {
   if (STATE.results) {
     var r = STATE.results;
     maif.results = {
+      pooling: {
+        method: r.re ? r.re.method : 'REML',
+        theta: r.re ? r.re.mu : null,
+        se: r.re ? r.re.se : null,
+        tau2: r.re ? r.re.tau2 : null,
+        I2: r.re ? r.re.I2 : null,
+        ci_hksj: r.re ? r.re.ci_hksj : null,
+        ci_wald: r.re ? r.re.ci_wald : null,
+        pi: r.re ? r.re.pi : null
+      },
       pubBias: {
         eggerP: r.egger ? r.egger.p : null,
+        eggerMethod: r.egger ? (r.egger.method || 'radialEgger') : null,
         beggP: r.begg ? r.begg.p : null,
         trimFillK0: r.trimfillR0 ? r.trimfillR0.k0 : null,
         trimFillAdjMu: r.trimfillR0 ? r.trimfillR0.adjMuRE : null,
