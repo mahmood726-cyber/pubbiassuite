@@ -257,7 +257,7 @@ const D = {
   "primary_estimand": "Bias-adjusted pooled effect estimates",
   "study_count": null,
   "participant_count": null,
-  "version": "1.1",
+  "version": "1.0",
   "date": "2026-03-26",
   "certainty": "",
   "app": "PubBias Suite v1.0",
@@ -266,12 +266,6 @@ const D = {
   "doi": "",
   "protocol": "",
   "source_article": "",
-  "notes": {
-    "app": "PubBias Suite v1.1",
-    "data": "12 bias methods + 3 funnel plots",
-    "code": "https://github.com/mahmood726-cyber/pubbiassuite",
-    "dashboard": "https://mahmood726-cyber.github.io/pubbiassuite/"
-  },
   "body": "How can meta-analysts assess publication bias using multiple complementary methods within a single integrated environment? PubBias Suite runs 12 detection and adjustment methods simultaneously, including Egger regression, Begg rank correlation, trim-and-fill, PET-PEESE, three-parameter selection modeling, p-curve, p-uniform star, WAAP-WLS, and limit meta-analysis, alongside three funnel plot variants. Each method uses the same dataset with traffic-light verdicts indicating whether bias is detected, enabling triangulation across regression tests, selection models, and nonparametric corrections. Validation across 25 Selenium tests confirmed correct execution for all 12 methods and 3 funnel types using the Turner 2008 antidepressant SMD dataset comprising 47 studies with 95% CI validation. Individual implementations were cross-validated against R metafor, meta, and puniform packages with results matching within documented tolerances. The tool enables multi-method assessment reducing reliance on any single diagnostic when evaluating evidence reliability. Most methods have limited power below approximately 10 studies, and results should be interpreted cautiously in small meta-analyses where detection is inherently unreliable.",
   "validation": {
     "status": "fail",
@@ -469,7 +463,6 @@ const notes = D.notes || {};
 const noteFields = [
   ["Type", D.type], ["Primary Estimand", D.primary_estimand],
   ["App", notes.app], ["Data", notes.data], ["Code", notes.code],
-  ["Dashboard", notes.dashboard],
   ["DOI", notes.doi], ["Version", notes.version || D.version],
   ["Certainty", notes.certainty || D.certainty],
   ["Validation", notes.validation || (D.validation||{}).status]
