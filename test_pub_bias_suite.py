@@ -3,7 +3,8 @@ Publication Bias Suite — Selenium Test Suite (25 tests)
 Run: python test_pub_bias_suite.py
 """
 import sys, os, time, io, unittest
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if 'pytest' not in sys.modules and hasattr(sys.stdout, 'buffer'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
