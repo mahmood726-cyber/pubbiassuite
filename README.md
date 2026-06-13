@@ -1,12 +1,12 @@
 # PubBias Suite
 
-Comprehensive publication bias assessment with 12 statistical methods and 3 funnel plot variants.
+Browser-based publication bias assessment with 12 statistical methods and 3 funnel plot variants.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ## Overview
 
-PubBias Suite implements 12 complementary publication bias detection and adjustment methods in a single browser-based tool, going well beyond what any single R package provides. It combines classical regression tests (Egger, Begg) with modern selection model approaches (3PSM, p-curve, p-uniform*), bias-adjusted estimators (PET-PEESE, WAAP-WLS, limit meta-analysis), and nonparametric corrections (trim-and-fill). Three funnel plot variants -- standard, contour-enhanced, and sunset -- provide visual assessment alongside the statistical tests.
+PubBias Suite implements 12 complementary publication bias detection and adjustment methods in a single browser-based tool. It combines classical regression tests (Egger, Begg) with modern selection model approaches (3PSM, p-curve, p-uniform*), bias-adjusted estimators (PET-PEESE, WAAP-WLS, limit meta-analysis), and nonparametric corrections (trim-and-fill). Three funnel plot variants -- standard, contour-enhanced, and sunset -- provide visual assessment alongside the statistical tests.
 
 ## Features
 
@@ -76,7 +76,7 @@ PubBias Suite implements 12 complementary publication bias detection and adjustm
 
 If you use this tool, please cite:
 
-> Ahmad M. PubBias Suite: A comprehensive browser-based publication bias assessment tool with 12 methods. 2026. Available at: https://github.com/mahmood726-cyber/pub-bias-suite
+> Ahmad M. PubBias Suite: A browser-based publication bias assessment tool with 12 methods. 2026. Available at: https://github.com/mahmood726-cyber/pub-bias-suite
 
 ## Author
 
